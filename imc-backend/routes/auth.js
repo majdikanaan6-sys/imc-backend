@@ -4,6 +4,10 @@ const pool = require("../db");
 
 const router = express.Router();
 
+
+
+// HEALTH CHECK
+
 router.get("/health", (req, res) => {
 
   res.json({
@@ -30,6 +34,7 @@ router.post("/imc/login", async (req, res) => {
       WHERE entry_permit_ref = $1
       AND passport_number = $2
       `,
+
       [entryPermitRef, passportNumber]
 
     );
@@ -194,6 +199,101 @@ router.post("/admin/create-applicant", async (req, res) => {
 
       success: true,
       applicant: result.rows[0]
+
+    });
+
+  } catch (error) {
+
+    console.log(error);
+
+    res.status(500).json({
+
+      success: false,
+      error: error.message
+
+    });
+
+  }
+
+});
+
+
+
+// ADMIN CREATE ENTRY PERMIT
+
+router.post("/admin/create-entry-permit", async (req, res) => {
+
+  try {
+
+    const {
+
+      entry_permit_ref,
+      passport_number,
+      nationality,
+
+      full_name,
+
+      sponsor_name,
+      sponsor_airline,
+
+      permit_issue_date,
+      permit_expiry_date
+
+    } = req.body;
+
+    const result = await pool.query(
+
+      `
+      INSERT INTO entry_permits (
+
+        entry_permit_ref,
+        passport_number,
+        nationality,
+
+        full_name,
+
+        sponsor_name,
+        sponsor_airline,
+
+        permit_issue_date,
+        permit_expiry_date
+
+      )
+
+      VALUES (
+
+        $1,$2,$3,
+        $4,
+        $5,$6,
+        $7,$8
+
+      )
+
+      RETURNING *;
+      `,
+
+      [
+
+        entry_permit_ref,
+        passport_number,
+        nationality,
+
+        full_name,
+
+        sponsor_name,
+        sponsor_airline,
+
+        permit_issue_date,
+        permit_expiry_date
+
+      ]
+
+    );
+
+    res.json({
+
+      success: true,
+      entryPermit: result.rows[0]
 
     });
 
