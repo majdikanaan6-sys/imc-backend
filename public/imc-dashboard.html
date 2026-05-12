@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>IMC Dashboard – Bahrain NPRA</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0d1f3c">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; }
+
+:root {
+  --navy:#0d1f3c; --navy2:#152b52; --red:#c0392b; --gold:#b8972a;
+  --cream:#f8f5ef; --white:#ffffff; --muted:#6b7280; --border:#ddd8ce;
+  --green:#1a7a4a; --green-bg:#e8f5ee;
+  --amber:#b45309; --amber-bg:#fef3cd;
+  --blue:#1e40af; --blue-bg:#eff6ff;
+  --topbar-h:56px; --nav-h:52px;
+}
+
+body { font-family:'DM Sans',sans-serif; background:var(--cream); color:var(--navy); min-height:100vh; display:flex; flex-direction:column; -webkit-font-smoothing:antialiased; }
+
+/* ── LOADING SCREEN ── */
+#loadingScreen {
+  position:fixed; inset:0; background:var(--navy); z-index:999;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px;
+}
+#loadingScreen .ls-logo { font-family:'Playfair Display',serif; color:#fff; font-size:1.2rem; }
+#loadingScreen .ls-sub { font-size:0.72rem; color:rgba(255,255,255,0.5); letter-spacing:0.08em; text-transform:uppercase; }
+.ls-spinner { width:28px; height:28px; border:2px solid rgba(255,255,255,0.2); border-top-color:var(--red); border-radius:50%; animation:spin .8s linear infinite; }
+@keyframes spin { to{transform:rotate(360deg)} }
+
+/* ── ERROR SCREEN ── */
+#errorScreen {
+  display:none; position:fixed; inset:0; background:var(--cream); z-index:998;
+  align-items:center; justify-content:center; flex-direction:column; gap:12px; padding:24px; text-align:center;
+}
+#errorScreen.show { display:flex; }
+#errorScreen h2 { font-family:'Playfair Display',serif; color:var(--navy); }
+#errorScreen p { font-size:0.83rem; color:var(--muted); line-height:1.6; max-width:320px; }
+#errorScreen a { display:inline-block; margin-top:12px; padding:12px 24px; background:var(--navy); color:#fff; border-radius:4px; text-decoration:none; font-size:0.85rem; }
+
+/* ── TOP BAR ── */
+.topbar {
+  position:fixed; top:0; left:0; right:0; height:var(--topbar-h);
+  background:var(--navy); display:flex; align-items:center;
+  padding:0 14px; gap:10px; z-index:200; border-bottom:3px solid var(--red);
+}
+.topbar-logo-text { font-family:'Playfair Display',serif; color:var(--white); font-size:0.82rem; line-height:1.2; flex:1; min-width:0; }
+.topbar-logo-text small { display:block; font-family:'DM Sans',sans-serif; font-size:0.6rem; color:rgba(255,255,255,.5); font-weight:400; text-transform:uppercase; letter-spacing:.06em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.topbar-avatar { width:32px; height:32px; background:var(--red); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:.8rem; font-weight:600; color:#fff; flex-shrink:0; }
+.topbar-logout { background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.2); color:rgba(255,255,255,.75); font-size:.7rem; padding:6px 10px; border-radius:3px; cursor:pointer; text-decoration:none; white-space:nowrap; flex-shrink:0; -webkit-tap-highlight-color:transparent; }
+.topbar-logout:active { background:rgba(192,57,43,.6); color:#fff; }
+
+/* ── MOBILE BOTTOM NAV ── */
+.mobile-nav {
+  position:fixed; bottom:0; left:0; right:0; height:var(--nav-h);
+  background:var(--white); border-top:1px solid var(--border);
+  display:flex; z-index:200; box-shadow:0 -4px 16px rgba(13,31,60,0.08);
+}
+.mobile-nav-item {
+  flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:2px; padding:6px 2px; font-size:0.56rem; color:var(--muted); font-weight:500;
+  letter-spacing:0.03em; text-transform:uppercase; border:none; background:none; cursor:pointer;
+  border-top:2px solid transparent; -webkit-tap-highlight-color:transparent; touch-action:manipulation;
+  position:relative; transition:color .15s;
+}
+.mobile-nav-item .nav-icon { font-size:1.05rem; line-height:1; }
+.mobile-nav-item.active { color:var(--navy); border-top-color:var(--red); }
+.mobile-nav-badge { position:absolute; top:4px; right:calc(50% - 18px); background:var(--red); color:#fff; font-size:.48rem; padding:1px 4px; border-radius:8px; font-weight:700; line-height:1.4; }
+
+/* ── LAYOUT ── */
+.layout { display:flex; margin-top:var(--topbar-h); margin-bottom:var(--nav-h); min-height:calc(100vh - var(--topbar-h) - var(--nav-h)); }
+.sidebar { display:none; }
+.main { flex:1; padding:20px 14px 16px; width:100%; }
+
+/* ── PAGES ── */
+.page { display:none; animation:fadeIn .25s ease; }
+.page.active { display:block; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)} }
+
+.page-header { margin-bottom:18px; }
+.page-header h2 { font-family:'Playfair Display',serif; font-size:1.3rem; color:var(--navy); line-height:1.2; }
+.page-header p { font-size:.78rem; color:var(--muted); margin-top:3px; }
+.breadcrumb { font-size:.68rem; color:var(--muted); margin-bottom:6px; }
+.breadcrumb span { color:var(--navy); }
+
+/* ── STATUS BANNER ── */
+.status-banner { border-radius:4px; padding:14px 16px; display:flex; align-items:flex-start; gap:12px; margin-bottom:20px; border:1px solid; flex-wrap:wrap; }
+.status-banner.amber  { background:var(--amber-bg); border-color:#fbbf24; }
+.status-banner.green  { background:var(--green-bg);  border-color:#6ee7b7; }
+.status-banner.blue   { background:var(--blue-bg);   border-color:#bfdbfe; }
+.status-banner.navy   { background:rgba(13,31,60,0.06); border-color:var(--border); }
+.status-icon { font-size:1.4rem; flex-shrink:0; margin-top:1px; }
+.status-info { flex:1; min-width:0; }
+.status-info h3 { font-size:.88rem; font-weight:600; color:var(--navy); margin-bottom:3px; }
+.status-info p { font-size:.76rem; color:var(--muted); line-height:1.5; }
+.status-tag { padding:4px 12px; border-radius:20px; font-size:.68rem; font-weight:600; letter-spacing:.05em; text-transform:uppercase; white-space:nowrap; align-self:flex-start; }
+.amber .status-tag { background:#fbbf24; color:#78350f; }
+.green .status-tag  { background:#6ee7b7; color:#064e3b; }
+.blue  .status-tag  { background:#bfdbfe; color:#1e3a8a; }
+.navy  .status-tag  { background:rgba(13,31,60,0.12); color:var(--navy); }
+
+/* ── CARDS GRID ── */
+.cards-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:20px; }
+.stat-card { background:var(--white); border:1px solid var(--border); border-radius:4px; padding:14px; }
+.stat-card-label { font-size:.62rem; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); margin-bottom:5px; }
+.stat-card-value { font-size:.88rem; font-weight:500; color:var(--navy); line-height:1.3; word-break:break-word; }
+.stat-card-icon { float:right; font-size:1.1rem; }
+
+/* ── PANEL ── */
+.panel { background:var(--white); border:1px solid var(--border); border-radius:4px; margin-bottom:16px; overflow:hidden; }
+.panel-header { padding:12px 16px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+.panel-header h3 { font-size:.85rem; font-weight:600; color:var(--navy); }
+.panel-header-badge { font-size:.64rem; background:rgba(13,31,60,.07); border:1px solid var(--border); padding:2px 8px; border-radius:20px; color:var(--muted); }
+.panel-body { padding:16px; }
+
+/* ── INFO TABLE ── */
+.info-table { width:100%; border-collapse:collapse; }
+.info-table tr { border-bottom:1px solid var(--border); }
+.info-table tr:last-child { border-bottom:none; }
+.info-table th { font-size:.66rem; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); font-weight:500; text-align:left; padding:10px 8px 10px 0; width:38%; vertical-align:top; }
+.info-table td { font-size:.82rem; color:var(--navy); padding:10px 0; vertical-align:top; word-break:break-word; }
+.info-table td.mono { font-family:monospace; font-size:.8rem; letter-spacing:.04em; }
+
+/* ── PROGRESS ── */
+.progress-wrap { margin-bottom:18px; }
+.progress-label { display:flex; justify-content:space-between; font-size:.7rem; color:var(--muted); margin-bottom:5px; }
+.progress-bar { background:var(--border); border-radius:20px; height:5px; overflow:hidden; }
+.progress-fill { height:100%; border-radius:20px; background:linear-gradient(90deg,var(--navy),#2563eb); transition:width 1.2s cubic-bezier(.22,.68,0,1.1); }
+
+/* ── TIMELINE ── */
+.timeline { list-style:none; position:relative; }
+.timeline::before { content:''; position:absolute; left:15px; top:0; bottom:0; width:2px; background:var(--border); }
+.tl-item { display:flex; gap:14px; margin-bottom:22px; position:relative; }
+.tl-item:last-child { margin-bottom:0; }
+.tl-dot { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:.82rem; flex-shrink:0; position:relative; z-index:1; border:2px solid var(--border); background:var(--white); }
+.tl-dot.done    { background:var(--green-bg); border-color:var(--green); }
+.tl-dot.active  { background:var(--amber-bg); border-color:var(--amber); }
+.tl-dot.waiting { background:var(--cream); border-color:var(--border); opacity:.55; }
+.tl-content { flex:1; padding-top:4px; min-width:0; }
+.tl-title { font-size:.84rem; font-weight:500; color:var(--navy); margin-bottom:2px; }
+.tl-meta  { font-size:.7rem;  color:var(--muted); margin-bottom:4px; }
+.tl-desc  { font-size:.76rem; color:var(--muted); line-height:1.5; }
+.tl-tag { display:inline-block; font-size:.62rem; padding:2px 8px; border-radius:20px; font-weight:600; margin-top:4px; text-transform:uppercase; letter-spacing:.05em; }
+.tl-tag.done    { background:var(--green-bg); color:var(--green); }
+.tl-tag.active  { background:var(--amber-bg); color:var(--amber); }
+.tl-tag.waiting { background:var(--cream); color:var(--muted); border:1px solid var(--border); }
+
+/* ── ACTION PANEL (confirm / invoice / etc.) ── */
+.action-panel { background:var(--amber-bg); border:1px solid #fbbf24; border-radius:4px; padding:16px; margin-bottom:16px; }
+.action-panel h4 { font-size:.86rem; font-weight:600; color:var(--navy); margin-bottom:6px; }
+.action-panel p { font-size:.76rem; color:var(--muted); line-height:1.5; margin-bottom:12px; }
+.action-field { margin-bottom:10px; }
+.action-field label { display:block; font-size:.7rem; font-weight:500; color:var(--navy); text-transform:uppercase; letter-spacing:.06em; margin-bottom:5px; }
+.action-field input, .action-field select {
+  width:100%; padding:11px 12px; border:1.5px solid var(--border); border-radius:4px;
+  font-family:'DM Sans',sans-serif; font-size:16px; color:var(--navy); background:var(--white);
+  outline:none; -webkit-appearance:none; appearance:none;
+}
+.action-field input:focus, .action-field select:focus { border-color:var(--navy); box-shadow:0 0 0 3px rgba(13,31,60,0.08); }
+.btn-action { width:100%; padding:13px; background:var(--navy); color:#fff; border:none; border-radius:4px; font-family:'DM Sans',sans-serif; font-size:.9rem; font-weight:500; cursor:pointer; -webkit-tap-highlight-color:transparent; touch-action:manipulation; display:flex; align-items:center; justify-content:center; gap:8px; }
+.btn-action:active { opacity:.88; }
+.btn-action .btn-spinner { display:none; width:14px; height:14px; border:2px solid rgba(255,255,255,.3); border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; }
+.btn-action.loading .btn-spinner { display:block; }
+.btn-action.loading span { opacity:.65; }
+
+/* ── INVOICE PANEL ── */
+.invoice-card { background:var(--white); border:1px solid var(--border); border-radius:4px; padding:20px; margin-bottom:16px; }
+.invoice-card h4 { font-family:'Playfair Display',serif; font-size:1rem; color:var(--navy); margin-bottom:12px; border-bottom:1px solid var(--border); padding-bottom:10px; }
+.invoice-row { display:flex; justify-content:space-between; font-size:.8rem; padding:6px 0; border-bottom:1px solid var(--border); }
+.invoice-row:last-of-type { border-bottom:none; font-weight:600; font-size:.88rem; color:var(--navy); margin-top:4px; }
+.invoice-row span:first-child { color:var(--muted); }
+
+/* ── WORK PERMIT ── */
+.wp-locked { text-align:center; padding:28px 16px; }
+.wp-lock-icon { font-size:2.4rem; margin-bottom:12px; opacity:.4; }
+.wp-locked h3 { font-family:'Playfair Display',serif; font-size:1.05rem; color:var(--navy); margin-bottom:8px; }
+.wp-locked p { font-size:.78rem; color:var(--muted); line-height:1.6; }
+.wp-card { background:linear-gradient(135deg,var(--navy) 0%,var(--navy2) 60%,#1a3a6e 100%); border-radius:8px; padding:24px; color:#fff; position:relative; overflow:hidden; margin-bottom:16px; }
+.wp-card::before { content:''; position:absolute; top:-20px; right:-20px; width:100px; height:100px; border-radius:50%; background:rgba(184,151,42,.15); pointer-events:none; }
+.wp-card-label { font-size:.62rem; text-transform:uppercase; letter-spacing:.1em; color:rgba(255,255,255,.5); margin-bottom:3px; }
+.wp-card-num { font-family:'Playfair Display',serif; font-size:1.5rem; letter-spacing:.04em; color:#fff; margin-bottom:16px; }
+.wp-card-row { display:flex; gap:20px; flex-wrap:wrap; }
+.wp-card-field label { font-size:.58rem; text-transform:uppercase; letter-spacing:.07em; color:rgba(255,255,255,.5); display:block; margin-bottom:2px; }
+.wp-card-field span { font-size:.8rem; color:rgba(255,255,255,.9); }
+.wp-stamp { position:absolute; bottom:14px; right:16px; font-size:.58rem; text-transform:uppercase; letter-spacing:.1em; color:rgba(255,255,255,.2); font-weight:600; }
+.lmra-btn { display:block; width:100%; padding:13px; background:var(--green); color:#fff; border:none; border-radius:4px; font-family:'DM Sans',sans-serif; font-size:.88rem; font-weight:500; text-align:center; text-decoration:none; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+
+/* ── NOTIFICATIONS ── */
+.notif-list { list-style:none; }
+.notif-item { display:flex; gap:12px; padding:14px 0; border-bottom:1px solid var(--border); }
+.notif-item:last-child { border-bottom:none; }
+.notif-dot { width:8px; height:8px; border-radius:50%; background:var(--red); margin-top:5px; flex-shrink:0; }
+.notif-dot.read { background:var(--border); }
+.notif-text { flex:1; }
+.notif-title { font-size:.83rem; font-weight:500; color:var(--navy); margin-bottom:2px; }
+.notif-desc { font-size:.74rem; color:var(--muted); line-height:1.5; }
+.notif-time { font-size:.66rem; color:var(--muted); margin-top:3px; }
+
+/* ── ALERT ── */
+.inline-alert { display:none; border-radius:4px; padding:10px 14px; font-size:.76rem; margin-bottom:12px; border:1px solid; line-height:1.5; }
+.inline-alert.error   { background:#fff0f0; border-color:#f5c6c6; border-left:3px solid var(--red);   color:#8b1a1a; }
+.inline-alert.success { background:var(--green-bg); border-color:#6ee7b7; border-left:3px solid var(--green); color:#064e3b; }
+.inline-alert.show { display:block; }
+
+/* ── FOOTER ── */
+.main-footer { background:var(--white); border-top:1px solid var(--border); padding:10px 14px; font-size:.68rem; color:var(--muted); text-align:center; line-height:1.7; }
+.main-footer a { color:var(--muted); text-decoration:none; }
+
+/* ── DESKTOP ── */
+@media(min-width:641px) {
+  :root { --nav-h:0px; }
+  .mobile-nav { display:none; }
+  .layout { margin-bottom:0; min-height:calc(100vh - var(--topbar-h)); }
+  .sidebar {
+    display:flex; flex-direction:column; width:240px; background:var(--white);
+    border-right:1px solid var(--border); flex-shrink:0;
+    position:sticky; top:var(--topbar-h); height:calc(100vh - var(--topbar-h)); overflow-y:auto;
+  }
+  .sidebar-section { padding:18px 16px 6px; font-size:.62rem; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.1em; }
+  .sidebar-item { display:flex; align-items:center; gap:10px; padding:10px 20px; font-size:.83rem; color:#374151; text-decoration:none; cursor:pointer; border:none; background:none; width:100%; border-left:3px solid transparent; transition:all .15s; user-select:none; }
+  .sidebar-item:hover { background:rgba(13,31,60,.04); color:var(--navy); }
+  .sidebar-item.active { background:rgba(13,31,60,.06); color:var(--navy); border-left-color:var(--red); font-weight:500; }
+  .sidebar-item .icon { font-size:.95rem; width:20px; text-align:center; }
+  .sidebar-badge { margin-left:auto; background:var(--red); color:#fff; font-size:.58rem; padding:2px 6px; border-radius:10px; font-weight:600; }
+  .sidebar-bottom { margin-top:auto; padding:16px; border-top:1px solid var(--border); }
+  .sidebar-ref { background:rgba(13,31,60,.04); border-radius:4px; padding:10px 12px; font-size:.7rem; color:var(--muted); line-height:1.8; }
+  .sidebar-ref strong { color:var(--navy); display:block; margin-bottom:2px; }
+  .main { padding:28px 24px; max-width:920px; }
+  .topbar { padding:0 20px; }
+  .cards-grid { grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:14px; margin-bottom:24px; }
+  .topbar-logo-text { font-size:0.88rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- LOADING SCREEN -->
+<div id="loadingScreen">
+  <div class="ls-logo">NPRA Bahrain</div>
+  <div class="ls-sub">Immigration Medical Clearance Portal</div>
+  <div class="ls-spinner"></div>
+</div>
+
+<!-- ERROR SCREEN -->
+<div id="errorScreen">
+  <h2>Session Expired</h2>
+  <p>Your session could not be verified. Please log in again with your Entry Permit Reference Number and Passport Number.</p>
+  <a href="imc-application-portal.html">Return to Login</a>
+</div>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-logo-text">
+    NPRA Bahrain
+    <small id="topbarSub">Immigration Medical Clearance Portal</small>
+  </div>
+  <div class="topbar-avatar" id="topbarAvatar">--</div>
+  <a class="topbar-logout" href="imc-application-portal.html" onclick="logout()">Sign Out</a>
+</div>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+  <!-- SIDEBAR (desktop) -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-section">Application</div>
+    <button class="sidebar-item active" onclick="showPage('overview',this)"><span class="icon">🏛️</span> Overview</button>
+    <button class="sidebar-item" onclick="showPage('timeline',this)"><span class="icon">📋</span> Timeline</button>
+    <button class="sidebar-item" onclick="showPage('medical',this)"><span class="icon">🩺</span> Medical</button>
+    <button class="sidebar-item" onclick="showPage('payment',this)"><span class="icon">💳</span> Payment</button>
+    <div class="sidebar-section">Clearance</div>
+    <button class="sidebar-item" onclick="showPage('workpermit',this)"><span class="icon">🪪</span> Personal Number</button>
+    <button class="sidebar-item" onclick="showPage('notifications',this)"><span class="icon">🔔</span> Notifications <span class="sidebar-badge" id="sb-notif-badge"></span></button>
+    <div class="sidebar-bottom">
+      <div class="sidebar-ref" id="sidebarRef">Loading…</div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- ── OVERVIEW ── -->
+    <div class="page active" id="page-overview">
+      <div class="breadcrumb">Dashboard <span>/ Overview</span></div>
+      <div class="page-header">
+        <h2>Application Overview</h2>
+        <p>Immigration Medical Clearance — Kingdom of Bahrain</p>
+      </div>
+      <div id="overviewBanner"></div>
+      <div class="progress-wrap">
+        <div class="progress-label"><span>Application Progress</span><span id="progressPct">0%</span></div>
+        <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+      </div>
+      <div class="cards-grid" id="overviewCards"></div>
+      <div class="panel">
+        <div class="panel-header"><h3>Applicant Information</h3><span class="panel-header-badge">As Submitted</span></div>
+        <div class="panel-body"><table class="info-table" id="applicantTable"></table></div>
+      </div>
+      <!-- Stage 3 action: confirm EP + airline -->
+      <div class="action-panel" id="confirmPanel" style="display:none">
+        <h4>✈️ Confirm Your Details</h4>
+        <p>Your Entry Permit has been verified by the IMC office. Please confirm your sponsor airline to proceed to payment.</p>
+        <div class="inline-alert" id="confirmAlert"></div>
+        <div class="action-field">
+          <label for="airlineInput">Sponsor Airline</label>
+          <input type="text" id="airlineInput" placeholder="e.g. Gulf Air" autocapitalize="words">
+        </div>
+        <button class="btn-action" id="confirmBtn" onclick="submitConfirm()">
+          <div class="btn-spinner"></div><span>Confirm &amp; Proceed</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ── TIMELINE ── -->
+    <div class="page" id="page-timeline">
+      <div class="breadcrumb">Dashboard <span>/ Timeline</span></div>
+      <div class="page-header">
+        <h2>Application Timeline</h2>
+        <p>Track each stage of your IMC process</p>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><h3>Process Stages</h3><span class="panel-header-badge">10 Steps</span></div>
+        <div class="panel-body"><ul class="timeline" id="timelineList"></ul></div>
+      </div>
+    </div>
+
+    <!-- ── MEDICAL ── -->
+    <div class="page" id="page-medical">
+      <div class="breadcrumb">Dashboard <span>/ Medical Examination</span></div>
+      <div class="page-header">
+        <h2>Medical Examination</h2>
+        <p>Your assigned health screening details</p>
+      </div>
+      <div id="medicalContent"></div>
+    </div>
+
+    <!-- ── PAYMENT ── -->
+    <div class="page" id="page-payment">
+      <div class="breadcrumb">Dashboard <span>/ Payment</span></div>
+      <div class="page-header">
+        <h2>Payment</h2>
+        <p>IMC processing fee — 250 BHD</p>
+      </div>
+      <div id="paymentContent"></div>
+    </div>
+
+    <!-- ── WORK PERMIT ── -->
+    <div class="page" id="page-workpermit">
+      <div class="breadcrumb">Dashboard <span>/ Personal Number</span></div>
+      <div class="page-header">
+        <h2>Work Permit Personal Number</h2>
+        <p>Your LMRA CPR / Work Permit Number</p>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><h3>Personal Number Status</h3></div>
+        <div class="panel-body" id="workPermitContent"></div>
+      </div>
+    </div>
+
+    <!-- ── NOTIFICATIONS ── -->
+    <div class="page" id="page-notifications">
+      <div class="breadcrumb">Dashboard <span>/ Notifications</span></div>
+      <div class="page-header">
+        <h2>Notifications</h2>
+        <p>Official communications from the IMC Office</p>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><h3>All Messages</h3></div>
+        <div class="panel-body"><ul class="notif-list" id="notifList"></ul></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- FOOTER -->
+<div class="main-footer">
+  © 2026 Nationality, Passport &amp; Residence Affairs — Kingdom of Bahrain &nbsp;·&nbsp;
+  <a href="PrivacyPolicy.html">Privacy Policy</a> &nbsp;·&nbsp;
+  <a href="VisaBhr9En.html">Contact NPRA</a>
+</div>
+
+<!-- MOBILE BOTTOM NAV -->
+<nav class="mobile-nav">
+  <button class="mobile-nav-item active" onclick="showPage('overview',this)"><span class="nav-icon">🏛️</span>Overview</button>
+  <button class="mobile-nav-item" onclick="showPage('timeline',this)"><span class="nav-icon">📋</span>Timeline</button>
+  <button class="mobile-nav-item" onclick="showPage('payment',this)"><span class="nav-icon">💳</span>Payment</button>
+  <button class="mobile-nav-item" onclick="showPage('workpermit',this)"><span class="nav-icon">🪪</span>Permit</button>
+  <button class="mobile-nav-item" onclick="showPage('notifications',this)"><span class="nav-icon">🔔</span>Alerts<span class="mobile-nav-badge" id="mob-notif-badge"></span></button>
+</nav>
+
+<script>
+const API = 'https://imc-backend-production.up.railway.app/api';
+let APPLICANT = null; // live data from /me
+
+// ── 10-STAGE CONFIG ────────────────────────────────────────────────────────
+const STAGES = [
+  { key:'entry_permit_issued',         label:'Entry Permit Issued',           pct:10  },
+  { key:'entry_permit_verified',       label:'Entry Permit Verified',         pct:20  },
+  { key:'medical_reservation_pending', label:'Medical Reservation Pending',   pct:30  },
+  { key:'invoice_requested',           label:'Invoice Requested',             pct:40  },
+  { key:'payment_pending',             label:'Payment Pending',               pct:50  },
+  { key:'payment_confirmed',           label:'Payment Confirmed',             pct:60  },
+  { key:'medical_scheduled',           label:'Medical Scheduled',             pct:70  },
+  { key:'medical_completed',           label:'Medical Completed',             pct:80  },
+  { key:'personal_number_issued',      label:'Personal Number Issued',        pct:95  },
+  { key:'completed',                   label:'Process Completed',             pct:100 },
+];
+
+function stageIndex(status) {
+  return STAGES.findIndex(s => s.key === status);
+}
+
+// ── STATUS BANNER CONFIG ───────────────────────────────────────────────────
+function getBannerConfig(status) {
+  const map = {
+    entry_permit_issued:         { icon:'🔖', color:'blue',  tag:'Permit Issued',     title:'Entry Permit Issued', body:'Your Entry Permit has been issued by the IMC office. Log in to verify your application is active in the system.' },
+    entry_permit_verified:       { icon:'✅', color:'blue',  tag:'Verified',          title:'Entry Permit Verified', body:'Your Entry Permit has been verified. Please confirm your sponsor airline details to proceed to the next stage.' },
+    medical_reservation_pending: { icon:'⏳', color:'amber', tag:'Action Required',   title:'Medical Reservation Pending', body:'Your details have been confirmed. The IMC office is processing your medical reservation. You will be notified once your invoice is ready.' },
+    invoice_requested:           { icon:'🧾', color:'amber', tag:'Invoice Ready',     title:'Invoice Ready for Payment', body:'Your invoice has been generated. Please proceed to the Payment section to review and submit your invoice request.' },
+    payment_pending:             { icon:'💳', color:'amber', tag:'Payment Pending',   title:'Invoice Requested — Awaiting Payment', body:'Your invoice request has been submitted. Please await official bank transfer details from the NPRA IMC Office. Do not make any payment until you receive official instructions.' },
+    payment_confirmed:           { icon:'✅', color:'green', tag:'Payment Confirmed', title:'Payment Confirmed', body:'Your payment has been received and confirmed. The IMC office will now schedule your medical examination and assign your doctor.' },
+    medical_scheduled:           { icon:'🏥', color:'blue',  tag:'Exam Scheduled',   title:'Medical Examination Scheduled', body:'Your examination has been scheduled. Please proceed to the Medical section for your appointment details, facility, and assigned doctor.' },
+    medical_completed:           { icon:'🔬', color:'blue',  tag:'Under Review',     title:'Medical Examination Completed', body:'Your examination results have been received and are under review by the Immigration Health Coordination Office.' },
+    personal_number_issued:      { icon:'🪪', color:'green', tag:'Number Issued',    title:'Personal Number Issued', body:'Your Work Permit Personal Number has been issued. Use this number on the LMRA website to check your work permit status.' },
+    completed:                   { icon:'🎉', color:'green', tag:'Completed',        title:'IMC Process Completed', body:'Congratulations. Your Immigration Medical Clearance process is fully completed.' },
+  };
+  return map[status] || { icon:'📋', color:'navy', tag:'In Progress', title:'Application In Progress', body:'Your application is being processed.' };
+}
+
+// ── NOTIFICATIONS per status ───────────────────────────────────────────────
+function buildNotifications(a) {
+  const idx = stageIndex(a.imc_status);
+  const all = [];
+  if(idx >= 0) all.push({ title:'Portal Access Activated', desc:'Your IMC applicant portal has been activated. You can track your application status here.', time: fmt(a.created_at), read:true });
+  if(idx >= 0) all.push({ title:'Entry Permit Issued', desc:`Entry Permit ${a.entry_permit_ref || ''} has been issued and linked to your application.`, time: fmt(a.created_at), read:true });
+  if(idx >= 1) all.push({ title:'Entry Permit Verified', desc:'Your Entry Permit Reference has been successfully verified against Bahrain immigration records.', time: fmt(a.created_at), read:false });
+  if(idx >= 2) all.push({ title:'Details Confirmed', desc:`Sponsor airline ${a.sponsor_airline || ''} confirmed. Your application has been forwarded to the IMC office for medical reservation.`, time: fmt(a.applicant_confirmed_at), read:false });
+  if(idx >= 3) all.push({ title:'Invoice Generated', desc:`Invoice ${a.invoice_ref || ''} has been generated for the IMC processing fee of 250 BHD.`, time: fmt(a.invoice_requested_at), read:false });
+  if(idx >= 4) all.push({ title:'Invoice Request Submitted', desc:'Your invoice request has been submitted. Await official payment instructions from the NPRA IMC Office.', time: fmt(a.invoice_requested_at), read:false });
+  if(idx >= 5) all.push({ title:'Payment Confirmed', desc:'Your payment of 250 BHD has been confirmed. Medical scheduling is now in progress.', time: fmt(a.payment_confirmed_at), read:false });
+  if(idx >= 6) all.push({ title:'Medical Examination Scheduled', desc:`Your appointment is confirmed at ${a.medical_facility || 'the designated facility'}${a.exam_date ? ' on ' + fmtDate(a.exam_date) : ''}. Your assigned doctor is ${a.doctor_name || 'TBC'}.`, time: fmt(a.imc_code_issued_at), read:false });
+  if(idx >= 7) all.push({ title:'Examination Completed', desc:'Your medical examination results have been received by the NPRA IMC Office and are under review.', time: '', read:false });
+  if(idx >= 8) all.push({ title:'Work Permit Personal Number Issued', desc:`Your Personal Number ${a.personal_number || ''} has been issued. You may now check your work permit status on the LMRA website.`, time: fmt(a.personal_number_issued_at), read:false });
+  return all.reverse(); // most recent first
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────────────
+function fmt(ts) {
+  if(!ts) return '';
+  try { return new Date(ts).toLocaleDateString('en-BH',{day:'numeric',month:'short',year:'numeric'}); } catch{ return ''; }
+}
+function fmtDate(d) {
+  if(!d) return 'TBC';
+  try { return new Date(d).toLocaleDateString('en-BH',{day:'numeric',month:'long',year:'numeric'}); } catch{ return d; }
+}
+function initials(name) {
+  if(!name) return '--';
+  return name.trim().split(' ').filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase();
+}
+function v(val, fallback) { return val || fallback || '—'; }
+
+// ── RENDER FUNCTIONS ───────────────────────────────────────────────────────
+function renderBanner(a) {
+  const cfg = getBannerConfig(a.imc_status);
+  document.getElementById('overviewBanner').innerHTML = `
+    <div class="status-banner ${cfg.color}">
+      <div class="status-icon">${cfg.icon}</div>
+      <div class="status-info"><h3>${cfg.title}</h3><p>${cfg.body}</p></div>
+      <div class="status-tag">${cfg.tag}</div>
+    </div>`;
+}
+
+function renderProgress(a) {
+  const idx = stageIndex(a.imc_status);
+  const pct = idx >= 0 ? STAGES[idx].pct : 5;
+  document.getElementById('progressPct').textContent = pct + '%';
+  setTimeout(() => { document.getElementById('progressFill').style.width = pct + '%'; }, 300);
+}
+
+function renderCards(a) {
+  const idx = stageIndex(a.imc_status);
+  const statusLabel = idx >= 0 ? STAGES[idx].label : a.imc_status;
+  document.getElementById('overviewCards').innerHTML = `
+    <div class="stat-card"><div class="stat-card-icon">🔖</div><div class="stat-card-label">Entry Permit</div><div class="stat-card-value">${v(a.entry_permit_ref)}</div></div>
+    <div class="stat-card"><div class="stat-card-icon">🛂</div><div class="stat-card-label">Passport</div><div class="stat-card-value">${v(a.passport_number)}</div></div>
+    <div class="stat-card"><div class="stat-card-icon">📊</div><div class="stat-card-label">Status</div><div class="stat-card-value" style="font-size:.76rem">${statusLabel}</div></div>
+    <div class="stat-card"><div class="stat-card-icon">✈️</div><div class="stat-card-label">Sponsor Airline</div><div class="stat-card-value">${v(a.sponsor_airline)}</div></div>`;
+}
+
+function renderApplicantTable(a) {
+  const rows = [
+    ['Full Name', v(a.full_name)],
+    ['Date of Birth', a.date_of_birth ? fmtDate(a.date_of_birth) : '—'],
+    ['Nationality', v(a.nationality)],
+    ['Passport No.', `<span class="mono">${v(a.passport_number)}</span>`],
+    ['Passport Expiry', a.passport_expiry ? fmtDate(a.passport_expiry) : '—'],
+    ['Employer', v(a.employer)],
+    ['Position', v(a.role)],
+    ['Sponsorship', v(a.sponsorship_type)],
+    ['Sponsor', v(a.sponsor_name)],
+  ];
+  document.getElementById('applicantTable').innerHTML = rows.map(([k,val]) =>
+    `<tr><th>${k}</th><td>${val}</td></tr>`).join('');
+}
+
+function renderConfirmPanel(a) {
+  // Show action panel only at entry_permit_verified stage
+  const panel = document.getElementById('confirmPanel');
+  panel.style.display = (a.imc_status === 'entry_permit_verified') ? 'block' : 'none';
+}
+
+function renderTimeline(a) {
+  const idx = stageIndex(a.imc_status);
+  const descriptions = [
+    'Entry Permit issued and registered in Bahrain immigration system by the IMC office.',
+    'Applicant credentials verified. Entry Permit confirmed active in immigration records.',
+    'Applicant has confirmed sponsor airline. Medical reservation is being processed by the IMC office.',
+    'Invoice generated by the IMC office. Applicant to proceed to payment section.',
+    'Invoice request submitted. Awaiting official NPRA payment instructions.',
+    'Payment of 250 BHD received and confirmed by the IMC office.',
+    `Medical examination scheduled at ${v(a.medical_facility,'designated facility')}. Assigned doctor: ${v(a.doctor_name,'TBC')}.`,
+    'Medical examination completed. Results submitted to NPRA for review.',
+    'Work Permit Personal Number issued. Proceed to LMRA website to activate work permit.',
+    'Immigration Medical Clearance process fully completed.',
+  ];
+  document.getElementById('timelineList').innerHTML = STAGES.map((s, i) => {
+    const done   = i < idx;
+    const active = i === idx;
+    const wait   = i > idx;
+    const dot    = done ? 'done' : active ? 'active' : 'waiting';
+    const icon   = done ? '✓' : active ? '→' : '○';
+    const tag    = done ? '<span class="tl-tag done">Completed</span>' : active ? '<span class="tl-tag active">Current Stage</span>' : '<span class="tl-tag waiting">Pending</span>';
+    return `<li class="tl-item">
+      <div class="tl-dot ${dot}">${icon}</div>
+      <div class="tl-content">
+        <div class="tl-title">${s.label}</div>
+        <div class="tl-desc">${descriptions[i]}</div>
+        ${tag}
+      </div>
+    </li>`;
+  }).join('');
+}
+
+function renderMedical(a) {
+  const idx = stageIndex(a.imc_status);
+  const el = document.getElementById('medicalContent');
+  if(idx < 6) {
+    el.innerHTML = `<div class="status-banner amber"><div class="status-icon">⏳</div><div class="status-info"><h3>Examination Not Yet Scheduled</h3><p>Medical examination details will appear here once payment is confirmed and your appointment is scheduled by the IMC office.</p></div><div class="status-tag">Pending</div></div>`;
+    return;
+  }
+  el.innerHTML = `
+    <div class="status-banner ${idx >= 7 ? 'green' : 'blue'}">
+      <div class="status-icon">${idx >= 7 ? '✅' : '🏥'}</div>
+      <div class="status-info"><h3>${idx >= 7 ? 'Examination Completed' : 'Examination Scheduled'}</h3>
+      <p>Present your IMC code <strong>${v(a.imc_code)}</strong> at reception. Do not attend a different facility.</p></div>
+      <div class="status-tag">${idx >= 7 ? 'Completed' : 'Upcoming'}</div>
+    </div>
+    <div class="panel"><div class="panel-header"><h3>Facility Details</h3></div><div class="panel-body">
+      <table class="info-table">
+        <tr><th>Facility</th><td>${v(a.medical_facility)}</td></tr>
+        <tr><th>Location</th><td>${v(a.medical_facility_location)}</td></tr>
+        <tr><th>Appointment</th><td>${a.exam_date ? fmtDate(a.exam_date) : '—'}</td></tr>
+        <tr><th>Assigned Doctor</th><td>${v(a.doctor_name)}</td></tr>
+        <tr><th>IMC Code</th><td class="mono">${v(a.imc_code)}</td></tr>
+        <tr><th>Report Submission</th><td>Submitted directly to NPRA by facility within 5 working days</td></tr>
+      </table>
+    </div></div>`;
+}
+
+function renderPayment(a) {
+  const idx = stageIndex(a.imc_status);
+  const el = document.getElementById('paymentContent');
+
+  // Too early
+  if(idx < 3) {
+    el.innerHTML = `<div class="status-banner navy"><div class="status-icon">🔒</div><div class="status-info"><h3>Payment Not Yet Available</h3><p>The payment section will become available once the IMC office has processed your medical reservation and generated your invoice.</p></div><div class="status-tag">Locked</div></div>`;
+    return;
+  }
+
+  // Invoice ready — stage 3 (invoice_requested): show request button
+  if(a.imc_status === 'invoice_requested') {
+    el.innerHTML = `
+      <div class="status-banner amber"><div class="status-icon">🧾</div><div class="status-info"><h3>Invoice Ready</h3><p>Your invoice is ready. Click below to submit your invoice request and proceed to payment.</p></div><div class="status-tag">Action Required</div></div>
+      <div class="invoice-card">
+        <h4>IMC Processing Invoice</h4>
+        <div class="invoice-row"><span>Applicant</span><span>${v(a.full_name)}</span></div>
+        <div class="invoice-row"><span>Entry Permit</span><span>${v(a.entry_permit_ref)}</span></div>
+        <div class="invoice-row"><span>Passport</span><span>${v(a.passport_number)}</span></div>
+        <div class="invoice-row"><span>Service</span><span>IMC Medical Processing Fee</span></div>
+        <div class="invoice-row"><span>Amount Due</span><span>250 BHD</span></div>
+      </div>
+      <div class="inline-alert" id="invoiceAlert"></div>
+      <button class="btn-action" id="invoiceBtn" onclick="submitInvoiceRequest()">
+        <div class="btn-spinner"></div><span>Submit Invoice Request</span>
+      </button>
+      <p style="font-size:.72rem;color:var(--muted);margin-top:12px;line-height:1.6;">⚠️ Do not make any bank transfer until you receive official payment instructions from the NPRA IMC Office.</p>`;
+    return;
+  }
+
+  // Payment pending — stage 4
+  if(a.imc_status === 'payment_pending') {
+    el.innerHTML = `
+      <div class="status-banner amber"><div class="status-icon">💳</div><div class="status-info"><h3>Awaiting Payment Instructions</h3><p>Your invoice request <strong>${v(a.invoice_ref)}</strong> has been submitted. The NPRA IMC Office will contact you with official bank transfer details within 1 working day.</p></div><div class="status-tag">Pending</div></div>
+      <div class="invoice-card">
+        <h4>Invoice Summary</h4>
+        <div class="invoice-row"><span>Invoice Ref</span><span>${v(a.invoice_ref)}</span></div>
+        <div class="invoice-row"><span>Applicant</span><span>${v(a.full_name)}</span></div>
+        <div class="invoice-row"><span>Service</span><span>IMC Medical Processing Fee</span></div>
+        <div class="invoice-row"><span>Amount Due</span><span>250 BHD</span></div>
+        <div class="invoice-row"><span>Status</span><span>Awaiting Payment</span></div>
+      </div>
+      <p style="font-size:.72rem;color:var(--muted);line-height:1.6;padding:12px;background:var(--cream);border-radius:4px;">⚠️ Do not make any bank transfer until you receive official payment instructions from the NPRA IMC Office via email or phone.</p>`;
+    return;
+  }
+
+  // Payment confirmed and beyond — stage 5+
+  el.innerHTML = `
+    <div class="status-banner green"><div class="status-icon">✅</div><div class="status-info"><h3>Payment Confirmed</h3><p>Your payment of 250 BHD has been received and confirmed by the IMC office.</p></div><div class="status-tag">Paid</div></div>
+    <div class="invoice-card">
+      <h4>Payment Receipt</h4>
+      <div class="invoice-row"><span>Invoice Ref</span><span>${v(a.invoice_ref)}</span></div>
+      <div class="invoice-row"><span>Applicant</span><span>${v(a.full_name)}</span></div>
+      <div class="invoice-row"><span>Service</span><span>IMC Medical Processing Fee</span></div>
+      <div class="invoice-row"><span>Amount Paid</span><span>250 BHD</span></div>
+      <div class="invoice-row"><span>Payment Date</span><span>${a.payment_confirmed_at ? fmt(a.payment_confirmed_at) : '—'}</span></div>
+    </div>`;
+}
+
+function renderWorkPermit(a) {
+  const el = document.getElementById('workPermitContent');
+  if(a.imc_status !== 'personal_number_issued' && a.imc_status !== 'completed') {
+    const idx = stageIndex(a.imc_status);
+    const label = idx >= 0 ? STAGES[idx].label : a.imc_status;
+    el.innerHTML = `
+      <div class="wp-locked">
+        <div class="wp-lock-icon">🔒</div>
+        <h3>Personal Number Not Yet Issued</h3>
+        <p>Your Work Permit Personal Number will appear here once the IMC process is fully approved. This number is the same as your LMRA CPR/Work Permit Number.</p>
+        <br>
+        <p style="font-size:.74rem;color:var(--muted)">Current status: <strong style="color:var(--amber)">${label}</strong></p>
+        <br>
+        <p style="font-size:.7rem;color:var(--muted);border-top:1px solid var(--border);padding-top:14px;line-height:1.6;">⚠️ Do not make any travel or employment arrangements until your Personal Number has been officially issued by NPRA.</p>
+      </div>`;
+  } else {
+    el.innerHTML = `
+      <div class="wp-card">
+        <div class="wp-card-label">Kingdom of Bahrain — NPRA</div>
+        <div class="wp-card-label" style="margin-bottom:8px">Work Permit Personal Number</div>
+        <div class="wp-card-num">${v(a.personal_number)}</div>
+        <div class="wp-card-row">
+          <div class="wp-card-field"><label>Full Name</label><span>${v(a.full_name)}</span></div>
+          <div class="wp-card-field"><label>Passport</label><span>${v(a.passport_number)}</span></div>
+          <div class="wp-card-field"><label>Issue Date</label><span>${a.personal_number_issued_at ? fmt(a.personal_number_issued_at) : '—'}</span></div>
+        </div>
+        <div class="wp-stamp">NPRA · Official Issue</div>
+      </div>
+      <a class="lmra-btn" href="https://www.lmra.bh" target="_blank" rel="noopener">
+        Check Work Permit Status on LMRA →
+      </a>
+      <p style="font-size:.72rem;color:var(--muted);margin-top:10px;line-height:1.6;text-align:center;">Use your Personal Number above to check and activate your work permit on the LMRA portal.</p>`;
+  }
+}
+
+function renderNotifications(a) {
+  const notifs = buildNotifications(a);
+  const unread = notifs.filter(n => !n.read).length;
+  // Update badges
+  ['sb-notif-badge','mob-notif-badge'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) { el.textContent = unread > 0 ? unread : ''; el.style.display = unread > 0 ? '' : 'none'; }
+  });
+  if(notifs.length === 0) {
+    document.getElementById('notifList').innerHTML = '<li style="font-size:.8rem;color:var(--muted);padding:12px 0;">No notifications yet.</li>';
+    return;
+  }
+  document.getElementById('notifList').innerHTML = notifs.map(n => `
+    <li class="notif-item">
+      <div class="notif-dot ${n.read ? 'read' : ''}"></div>
+      <div class="notif-text">
+        <div class="notif-title">${n.title}</div>
+        <div class="notif-desc">${n.desc}</div>
+        ${n.time ? `<div class="notif-time">${n.time}</div>` : ''}
+      </div>
+    </li>`).join('');
+}
+
+function renderSidebar(a) {
+  document.getElementById('sidebarRef').innerHTML = `
+    <strong>Reference</strong>
+    EP: ${v(a.entry_permit_ref)}<br>
+    Passport: ${v(a.passport_number)}<br>
+    Nationality: ${v(a.nationality)}<br>
+    IMC Code: ${v(a.imc_code)}`;
+  const av = initials(a.full_name);
+  document.getElementById('topbarAvatar').textContent = av;
+  document.getElementById('topbarSub').textContent = v(a.entry_permit_ref, 'IMC Portal');
+}
+
+// ── FULL RENDER ────────────────────────────────────────────────────────────
+function renderDashboard(a) {
+  APPLICANT = a;
+  renderBanner(a);
+  renderProgress(a);
+  renderCards(a);
+  renderApplicantTable(a);
+  renderConfirmPanel(a);
+  renderTimeline(a);
+  renderMedical(a);
+  renderPayment(a);
+  renderWorkPermit(a);
+  renderNotifications(a);
+  renderSidebar(a);
+}
+
+// ── API ACTIONS ────────────────────────────────────────────────────────────
+async function submitConfirm() {
+  const airline = document.getElementById('airlineInput').value.trim();
+  if(!airline) { showInlineAlert('confirmAlert','Please enter your sponsor airline.','error'); return; }
+  const btn = document.getElementById('confirmBtn');
+  btn.classList.add('loading'); btn.disabled = true;
+  try {
+    const token = localStorage.getItem('imc_token');
+    const res = await fetch(API + '/imc/confirm', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+      body: JSON.stringify({ sponsorAirline: airline })
+    });
+    const data = await res.json();
+    if(data.success) {
+      showInlineAlert('confirmAlert','Details confirmed! Refreshing your dashboard…','success');
+      setTimeout(() => loadDashboard(), 1500);
+    } else {
+      showInlineAlert('confirmAlert', data.message || 'Could not confirm details.','error');
+      btn.classList.remove('loading'); btn.disabled = false;
+    }
+  } catch {
+    showInlineAlert('confirmAlert','Connection error. Please try again.','error');
+    btn.classList.remove('loading'); btn.disabled = false;
+  }
+}
+
+async function submitInvoiceRequest() {
+  const btn = document.getElementById('invoiceBtn');
+  if(!btn) return;
+  btn.classList.add('loading'); btn.disabled = true;
+  try {
+    const token = localStorage.getItem('imc_token');
+    const res = await fetch(API + '/imc/invoice-request', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+token}
+    });
+    const data = await res.json();
+    if(data.success) {
+      showInlineAlert('invoiceAlert','Invoice request submitted! Refreshing…','success');
+      setTimeout(() => loadDashboard(), 1500);
+    } else {
+      showInlineAlert('invoiceAlert', data.message || 'Could not submit request.','error');
+      btn.classList.remove('loading'); btn.disabled = false;
+    }
+  } catch {
+    showInlineAlert('invoiceAlert','Connection error. Please try again.','error');
+    btn.classList.remove('loading'); btn.disabled = false;
+  }
+}
+
+function showInlineAlert(id, msg, type) {
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.textContent = msg;
+  el.className = 'inline-alert ' + type + ' show';
+}
+
+// ── NAV ────────────────────────────────────────────────────────────────────
+function showPage(id, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.sidebar-item, .mobile-nav-item').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  if(el) el.classList.add('active');
+  // sync opposite nav
+  const sidebarBtns = document.querySelectorAll('.sidebar-item');
+  const order = ['overview','timeline','medical','payment','workpermit','notifications'];
+  const idx = order.indexOf(id);
+  if(idx >= 0 && sidebarBtns[idx]) sidebarBtns[idx].classList.add('active');
+  // mobile nav sync
+  const mobileOrder = ['overview','timeline','payment','workpermit','notifications'];
+  const mIdx = mobileOrder.indexOf(id);
+  const mobileBtns = document.querySelectorAll('.mobile-nav-item');
+  if(mIdx >= 0 && mobileBtns[mIdx]) mobileBtns[mIdx].classList.add('active');
+  window.scrollTo(0,0);
+}
+
+function logout() {
+  localStorage.removeItem('imc_token');
+  localStorage.removeItem('imc_applicant');
+}
+
+// ── BOOT ───────────────────────────────────────────────────────────────────
+async function loadDashboard() {
+  const token = localStorage.getItem('imc_token');
+  if(!token) { showError(); return; }
+  try {
+    const res = await fetch(API + '/imc/me', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    if(res.status === 401) { showError(); return; }
+    const data = await res.json();
+    if(!data.success) { showError(); return; }
+    renderDashboard(data.applicant);
+    document.getElementById('loadingScreen').style.display = 'none';
+  } catch {
+    // fallback to cached snapshot if offline
+    const cached = localStorage.getItem('imc_applicant');
+    if(cached) {
+      try { renderDashboard(JSON.parse(cached)); document.getElementById('loadingScreen').style.display = 'none'; }
+      catch { showError(); }
+    } else { showError(); }
+  }
+}
+
+function showError() {
+  document.getElementById('loadingScreen').style.display = 'none';
+  document.getElementById('errorScreen').classList.add('show');
+}
+
+loadDashboard();
+</script>
+</body>
+</html>

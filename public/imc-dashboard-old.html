@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>IMC Dashboard – Bahrain NPRA</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; }
+
+:root {
+  --navy:     #0d1f3c;
+  --navy2:    #152b52;
+  --red:      #c0392b;
+  --gold:     #b8972a;
+  --gold-lt:  #f0e4b0;
+  --cream:    #f8f5ef;
+  --white:    #ffffff;
+  --muted:    #6b7280;
+  --border:   #ddd8ce;
+  --green:    #1a7a4a;
+  --green-bg: #e8f5ee;
+  --amber:    #b45309;
+  --amber-bg: #fef3cd;
+  --blue:     #1e40af;
+  --blue-bg:  #eff6ff;
+  --topbar-h: 56px;
+  --nav-h:    48px;
+}
+
+body {
+  font-family:'DM Sans',sans-serif; background:var(--cream);
+  color:var(--navy); min-height:100vh; display:flex; flex-direction:column;
+}
+
+/* ── TOP BAR ── */
+.topbar {
+  position:fixed; top:0; left:0; right:0; height:var(--topbar-h);
+  background:var(--navy); display:flex; align-items:center;
+  padding:0 14px; gap:10px; z-index:200;
+  border-bottom:3px solid var(--red);
+}
+.topbar-logo-text {
+  font-family:'Playfair Display',serif; color:var(--white);
+  font-size:0.82rem; line-height:1.2; flex:1; min-width:0;
+}
+.topbar-logo-text small {
+  display:block; font-family:'DM Sans',sans-serif;
+  font-size:0.6rem; color:rgba(255,255,255,.5);
+  font-weight:400; text-transform:uppercase; letter-spacing:.06em;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.topbar-avatar {
+  width:32px; height:32px; background:var(--red); border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-size:.82rem; font-weight:600; color:#fff; flex-shrink:0;
+}
+.topbar-logout {
+  background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.2);
+  color:rgba(255,255,255,.75); font-size:.7rem; padding:6px 10px;
+  border-radius:3px; cursor:pointer; text-decoration:none;
+  letter-spacing:.03em; white-space:nowrap; flex-shrink:0;
+  -webkit-tap-highlight-color:transparent;
+}
+.topbar-logout:active { background:rgba(192,57,43,.6); color:#fff; }
+
+/* ── MOBILE NAV (bottom tabs) ── */
+.mobile-nav {
+  position:fixed; bottom:0; left:0; right:0;
+  height:var(--nav-h); background:var(--white);
+  border-top:1px solid var(--border);
+  display:flex; z-index:200;
+  box-shadow:0 -4px 16px rgba(13,31,60,0.08);
+}
+.mobile-nav-item {
+  flex:1; display:flex; flex-direction:column; align-items:center;
+  justify-content:center; gap:2px; padding:6px 4px;
+  font-size:0.58rem; color:var(--muted); font-weight:500;
+  letter-spacing:0.03em; text-transform:uppercase;
+  border:none; background:none; cursor:pointer;
+  border-top:2px solid transparent;
+  -webkit-tap-highlight-color:transparent; touch-action:manipulation;
+  position:relative; transition:color .15s;
+}
+.mobile-nav-item .nav-icon { font-size:1.1rem; line-height:1; }
+.mobile-nav-item.active { color:var(--navy); border-top-color:var(--red); }
+.mobile-nav-badge {
+  position:absolute; top:4px; right:calc(50% - 16px);
+  background:var(--red); color:#fff; font-size:.5rem;
+  padding:1px 4px; border-radius:8px; font-weight:700; line-height:1.4;
+}
+
+/* ── LAYOUT ── */
+.layout {
+  display:flex;
+  margin-top:var(--topbar-h);
+  margin-bottom:var(--nav-h);
+  min-height:calc(100vh - var(--topbar-h) - var(--nav-h));
+}
+
+/* Sidebar hidden on mobile */
+.sidebar { display:none; }
+
+/* ── MAIN CONTENT ── */
+.main { flex:1; padding:20px 14px 16px; width:100%; }
+
+/* ── PAGES ── */
+.page { display:none; animation:fadeIn .25s ease; }
+.page.active { display:block; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)} }
+
+.page-header { margin-bottom:18px; }
+.page-header h2 { font-family:'Playfair Display',serif; font-size:1.3rem; color:var(--navy); line-height:1.2; }
+.page-header p { font-size:.78rem; color:var(--muted); margin-top:3px; }
+.breadcrumb { font-size:.68rem; color:var(--muted); margin-bottom:6px; letter-spacing:.03em; }
+.breadcrumb span { color:var(--navy); }
+
+/* ── STATUS BANNER ── */
+.status-banner {
+  border-radius:4px; padding:14px 16px;
+  display:flex; align-items:flex-start; gap:12px;
+  margin-bottom:20px; border:1px solid; flex-wrap:wrap;
+}
+.status-banner.pending  { background:var(--amber-bg); border-color:#fbbf24; }
+.status-banner.approved { background:var(--green-bg);  border-color:#6ee7b7; }
+.status-banner.review   { background:var(--blue-bg);   border-color:#bfdbfe; }
+.status-icon  { font-size:1.4rem; flex-shrink:0; margin-top:1px; }
+.status-info  { flex:1; min-width:0; }
+.status-info h3 { font-size:.88rem; font-weight:600; color:var(--navy); margin-bottom:3px; }
+.status-info p  { font-size:.76rem; color:var(--muted); line-height:1.5; }
+.status-tag {
+  padding:4px 12px; border-radius:20px;
+  font-size:.68rem; font-weight:600; letter-spacing:.05em;
+  text-transform:uppercase; white-space:nowrap; align-self:flex-start;
+}
+.pending .status-tag  { background:#fbbf24; color:#78350f; }
+.approved .status-tag { background:#6ee7b7; color:#064e3b; }
+.review .status-tag   { background:#bfdbfe; color:#1e3a8a; }
+
+/* ── CARDS GRID ── */
+.cards-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:20px; }
+.stat-card { background:var(--white); border:1px solid var(--border); border-radius:4px; padding:14px; }
+.stat-card-label { font-size:.62rem; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); margin-bottom:5px; }
+.stat-card-value { font-family:'Playfair Display',serif; font-size:1.3rem; color:var(--navy); line-height:1; }
+.stat-card-sub { font-size:.68rem; color:var(--muted); margin-top:3px; }
+.stat-card-icon { float:right; font-size:1.2rem; }
+
+/* ── PANEL ── */
+.panel { background:var(--white); border:1px solid var(--border); border-radius:4px; margin-bottom:16px; }
+.panel-header {
+  padding:12px 16px; border-bottom:1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between;
+}
+.panel-header h3 { font-size:.85rem; font-weight:600; color:var(--navy); }
+.panel-header-badge {
+  font-size:.64rem; background:rgba(13,31,60,.07);
+  border:1px solid var(--border); padding:2px 8px;
+  border-radius:20px; color:var(--muted);
+}
+.panel-body { padding:16px; }
+
+/* ── INFO TABLE ── */
+.info-table { width:100%; border-collapse:collapse; }
+.info-table tr { border-bottom:1px solid var(--border); }
+.info-table tr:last-child { border-bottom:none; }
+.info-table th {
+  font-size:.66rem; text-transform:uppercase; letter-spacing:.06em;
+  color:var(--muted); font-weight:500; text-align:left;
+  padding:10px 8px 10px 0; width:40%; vertical-align:top;
+}
+.info-table td { font-size:.82rem; color:var(--navy); padding:10px 0; vertical-align:top; }
+.info-table td.mono { font-family:monospace; font-size:.8rem; letter-spacing:.04em; word-break:break-all; }
+
+/* ── PROGRESS ── */
+.progress-wrap { margin-bottom:18px; }
+.progress-label { display:flex; justify-content:space-between; font-size:.7rem; color:var(--muted); margin-bottom:5px; }
+.progress-bar { background:var(--border); border-radius:20px; height:5px; overflow:hidden; }
+.progress-fill { height:100%; border-radius:20px; background:linear-gradient(90deg,var(--navy),#2563eb); transition:width 1s cubic-bezier(.22,.68,0,1.1); }
+
+/* ── TIMELINE ── */
+.timeline { list-style:none; position:relative; }
+.timeline::before { content:''; position:absolute; left:15px; top:0; bottom:0; width:2px; background:var(--border); }
+.tl-item { display:flex; gap:14px; margin-bottom:22px; position:relative; }
+.tl-item:last-child { margin-bottom:0; }
+.tl-dot {
+  width:32px; height:32px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-size:.82rem; flex-shrink:0; position:relative; z-index:1;
+  border:2px solid var(--border); background:var(--white);
+}
+.tl-dot.done    { background:var(--green-bg); border-color:var(--green); }
+.tl-dot.active  { background:var(--amber-bg); border-color:var(--amber); }
+.tl-dot.waiting { background:var(--cream); border-color:var(--border); opacity:.6; }
+.tl-content { flex:1; padding-top:4px; }
+.tl-title { font-size:.84rem; font-weight:500; color:var(--navy); margin-bottom:2px; }
+.tl-meta  { font-size:.7rem; color:var(--muted); margin-bottom:4px; }
+.tl-desc  { font-size:.76rem; color:var(--muted); line-height:1.5; }
+.tl-tag {
+  display:inline-block; font-size:.62rem; padding:2px 8px;
+  border-radius:20px; font-weight:600; margin-top:4px;
+  text-transform:uppercase; letter-spacing:.05em;
+}
+.tl-tag.done    { background:var(--green-bg); color:var(--green); }
+.tl-tag.active  { background:var(--amber-bg); color:var(--amber); }
+.tl-tag.waiting { background:var(--cream); color:var(--muted); border:1px solid var(--border); }
+
+/* ── MEDICAL GRID ── */
+.med-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.med-item { background:var(--cream); border:1px solid var(--border); border-radius:3px; padding:12px; }
+.med-item-label { font-size:.64rem; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); margin-bottom:4px; }
+.med-item-value { font-size:.86rem; font-weight:500; color:var(--navy); }
+.med-item-value.ok      { color:var(--green); }
+.med-item-value.pending { color:var(--amber); }
+
+/* ── DOCUMENTS ── */
+.doc-list { list-style:none; }
+.doc-item {
+  display:flex; align-items:center; gap:12px;
+  padding:12px 0; border-bottom:1px solid var(--border);
+}
+.doc-item:last-child { border-bottom:none; }
+.doc-icon {
+  width:34px; height:34px; background:var(--blue-bg);
+  border-radius:4px; display:flex; align-items:center;
+  justify-content:center; font-size:1rem; flex-shrink:0;
+}
+.doc-info { flex:1; min-width:0; }
+.doc-name { font-size:.82rem; font-weight:500; color:var(--navy); }
+.doc-meta { font-size:.68rem; color:var(--muted); margin-top:2px; }
+.doc-status {
+  font-size:.64rem; padding:3px 8px; border-radius:20px;
+  font-weight:600; text-transform:uppercase; letter-spacing:.04em;
+  flex-shrink:0;
+}
+.doc-status.required  { background:var(--amber-bg); color:var(--amber); }
+.doc-status.submitted { background:var(--green-bg);  color:var(--green); }
+.doc-status.pending   { background:var(--blue-bg);   color:var(--blue); }
+
+/* ── NOTIFICATIONS ── */
+.notif-list { list-style:none; }
+.notif-item { display:flex; gap:12px; padding:14px 0; border-bottom:1px solid var(--border); }
+.notif-item:last-child { border-bottom:none; }
+.notif-dot { width:8px; height:8px; border-radius:50%; background:var(--red); margin-top:5px; flex-shrink:0; }
+.notif-dot.read { background:var(--border); }
+.notif-text { flex:1; }
+.notif-title { font-size:.83rem; font-weight:500; color:var(--navy); margin-bottom:2px; }
+.notif-desc { font-size:.74rem; color:var(--muted); line-height:1.5; }
+.notif-time { font-size:.66rem; color:var(--muted); margin-top:3px; }
+
+/* ── WORK PERMIT ── */
+.wp-locked { text-align:center; padding:28px 16px; }
+.wp-lock-icon { font-size:2.5rem; margin-bottom:12px; opacity:.4; }
+.wp-locked h3 { font-family:'Playfair Display',serif; font-size:1.05rem; color:var(--navy); margin-bottom:8px; }
+.wp-locked p { font-size:.78rem; color:var(--muted); line-height:1.6; }
+
+/* ── FOOTER ── */
+.main-footer {
+  background:var(--white); border-top:1px solid var(--border);
+  padding:10px 14px; font-size:.68rem; color:var(--muted);
+  text-align:center; line-height:1.7;
+  /* footer sits above bottom nav */
+  margin-bottom:0;
+}
+.main-footer a { color:var(--muted); text-decoration:none; }
+
+/* ── DESKTOP / TABLET OVERRIDES (641px+) ── */
+@media(min-width:641px) {
+  :root { --nav-h:0px; }
+  .mobile-nav { display:none; }
+  .layout { margin-bottom:0; min-height:calc(100vh - var(--topbar-h)); }
+  .sidebar {
+    display:flex; flex-direction:column;
+    width:240px; background:var(--white);
+    border-right:1px solid var(--border); flex-shrink:0;
+    position:sticky; top:var(--topbar-h);
+    height:calc(100vh - var(--topbar-h)); overflow-y:auto;
+  }
+  .sidebar-section { padding:18px 16px 6px; font-size:.62rem; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.1em; }
+  .sidebar-item {
+    display:flex; align-items:center; gap:10px;
+    padding:10px 20px; font-size:.83rem; color:#374151;
+    text-decoration:none; cursor:pointer; border:none; background:none; width:100%;
+    border-left:3px solid transparent; transition:all .15s; user-select:none;
+  }
+  .sidebar-item:hover { background:rgba(13,31,60,.04); color:var(--navy); }
+  .sidebar-item.active { background:rgba(13,31,60,.06); color:var(--navy); border-left-color:var(--red); font-weight:500; }
+  .sidebar-item .icon { font-size:.95rem; width:20px; text-align:center; }
+  .sidebar-badge { margin-left:auto; background:var(--red); color:#fff; font-size:.58rem; padding:2px 6px; border-radius:10px; font-weight:600; }
+  .sidebar-bottom { margin-top:auto; padding:16px; border-top:1px solid var(--border); }
+  .sidebar-ref { background:rgba(13,31,60,.04); border-radius:4px; padding:10px 12px; font-size:.7rem; color:var(--muted); line-height:1.7; }
+  .sidebar-ref strong { color:var(--navy); display:block; margin-bottom:2px; }
+  .main { padding:28px 24px; max-width:920px; }
+  .topbar { padding:0 20px; }
+  .cards-grid { grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:14px; margin-bottom:24px; }
+  .topbar-logo-text { font-size:0.88rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-logo-text">
+    NPRA Bahrain
+    <small>Immigration Medical Clearance Portal</small>
+  </div>
+  <div class="topbar-avatar">AK</div>
+  <a class="topbar-logout" href="imc-application-portal.html" onclick="logout()">Sign Out</a>
+</div>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+  <!-- DESKTOP SIDEBAR (hidden on mobile) -->
+  <aside class="sidebar">
+    <div class="sidebar-section">Application</div>
+    <button class="sidebar-item active" onclick="showPage('overview',this)">
+      <span class="icon">🏛️</span> Overview
+    </button>
+    <button class="sidebar-item" onclick="showPage('timeline',this)">
+      <span class="icon">📋</span> Application Timeline
+    </button>
+   
+    <button class="sidebar-item" onclick="showPage('documents',this)">
+      <span class="icon">📁</span> Documents
+      <span class="sidebar-badge">2</span>
+    </button>
+    <div class="sidebar-section">Clearance</div>
+  
+    <button class="sidebar-item" onclick="showPage('notifications',this)">
+      <span class="icon">🔔</span> Notifications
+      <span class="sidebar-badge">3</span>
+    </button>
+    <div class="sidebar-bottom">
+      <div class="sidebar-ref">
+       <strong>Reference Numbers</strong>
+EP Ref: EP-2026-48392174<br>
+Passport: A12345678<br>
+Nationality: Nigerian
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- ── OVERVIEW ── -->
+    <div class="page active" id="page-overview">
+      <div class="breadcrumb">Dashboard <span>/ Overview</span></div>
+      <div class="page-header">
+        <h2>Application Overview</h2>
+        <p>Immigration Medical Clearance — Kingdom of Bahrain</p>
+      </div>
+
+      <div class="status-banner review">
+  <div class="status-icon">✅</div>
+  <div class="status-info">
+    <h3>Entry Permit Verified</h3>
+    <p>
+      Your Entry Permit Reference Number has been successfully verified within the immigration system.
+      Please contact IMC administration to commence medical reservation and processing.
+    </p>
+  </div>
+  <div class="status-tag">Verified</div>
+</div>
+
+      <div class="progress-wrap">
+        <div class="progress-label"><span>Application Progress</span><span>15%</span></div>
+        <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+      </div>
+
+    <div class="cards-grid">
+
+  <div class="stat-card">
+    <div class="stat-card-icon">🔖</div>
+    <div class="stat-card-label">Entry Permit Ref</div>
+    <div class="stat-card-value" style="font-size:.82rem;font-family:'DM Sans',sans-serif;letter-spacing:.02em">
+      EP-2026-48392174
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-card-icon">🛂</div>
+    <div class="stat-card-label">Passport Number</div>
+    <div class="stat-card-value" style="font-size:.88rem;font-family:'DM Sans',sans-serif">
+      A12345678
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-card-icon">📅</div>
+    <div class="stat-card-label">Permit Issue Date</div>
+    <div class="stat-card-value" style="font-size:.88rem;font-family:'DM Sans',sans-serif">
+      12 May 2026
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-card-icon">✈️</div>
+    <div class="stat-card-label">Sponsor Airline</div>
+    <div class="stat-card-value" style="font-size:.88rem;font-family:'DM Sans',sans-serif">
+      Gulf Air
+    </div>
+  </div>
+
+</div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <h3>Applicant Information</h3>
+          <span class="panel-header-badge">As Submitted</span>
+        </div>
+        <div class="panel-body">
+          <table class="info-table">
+            <tr><th>Full Name</th><td>Abdullah Mohammed Al-Khalifa</td></tr>
+            <tr><th>Date of Birth</th><td>14 March 1994</td></tr>
+            <tr><th>Nationality</th><td>Nigerian</td></tr>
+            <tr><th>Passport No.</th><td class="mono">A12345678</td></tr>
+            <tr><th>Expiry</th><td>09 January 2030</td></tr>
+            <tr><th>Employer</th><td>Bahrain Sports Authority – Athletic Division</td></tr>
+            <tr><th>Position</th><td>Professional Athlete</td></tr>
+            <tr><th>Sponsorship</th><td>Employment Visa – Sports Category</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TIMELINE ── -->
+    <div class="page" id="page-timeline">
+      <div class="breadcrumb">Dashboard <span>/ Application Timeline</span></div>
+      <div class="page-header">
+        <h2>Application Timeline</h2>
+        <p>Track each stage of your IMC process</p>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><h3>Process Stages</h3><span class="panel-header-badge">5 Steps</span></div>
+        <div class="panel-body">
+          <ul class="timeline">
+
+  <li class="tl-item">
+    <div class="tl-dot done">✓</div>
+    <div class="tl-content">
+      <div class="tl-title">Entry Permit Issued</div>
+      <div class="tl-meta">12 May 2026 · 09:14 AST</div>
+      <div class="tl-desc">
+        Entry Permit successfully issued and registered under the Bahrain immigration system.
+      </div>
+      <span class="tl-tag done">Completed</span>
+    </div>
+  </li>
+
+  <li class="tl-item">
+    <div class="tl-dot done">✓</div>
+    <div class="tl-content">
+      <div class="tl-title">Portal Access Verified</div>
+      <div class="tl-meta">12 May 2026 · 11:32 AST</div>
+      <div class="tl-desc">
+        Applicant credentials verified successfully against immigration records.
+      </div>
+      <span class="tl-tag done">Completed</span>
+    </div>
+  </li>
+
+  <li class="tl-item">
+    <div class="tl-dot active">→</div>
+    <div class="tl-content">
+      <div class="tl-title">Awaiting IMC Reservation</div>
+      <div class="tl-meta">In Progress</div>
+      <div class="tl-desc">
+        Please contact IMC administration to commence medical reservation and processing.
+      </div>
+      <span class="tl-tag active">Action Required</span>
+    </div>
+  </li>
+
+  <li class="tl-item">
+    <div class="tl-dot waiting">○</div>
+    <div class="tl-content">
+      <div class="tl-title">Invoice Request & Payment</div>
+      <div class="tl-meta">Pending</div>
+      <div class="tl-desc">
+        Invoice generation and payment processing will begin after medical reservation approval.
+      </div>
+      <span class="tl-tag waiting">Pending</span>
+    </div>
+  </li>
+
+  <li class="tl-item">
+    <div class="tl-dot waiting">○</div>
+    <div class="tl-content">
+      <div class="tl-title">Medical Scheduling & Clearance</div>
+      <div class="tl-meta">Pending</div>
+      <div class="tl-desc">
+        Examination appointment, IMC code issuance, and clearance review will appear here.
+      </div>
+      <span class="tl-tag waiting">Pending</span>
+    </div>
+  </li>
+
+  <li class="tl-item">
+    <div class="tl-dot waiting">○</div>
+    <div class="tl-content">
+      <div class="tl-title">Personal Number Issuance</div>
+      <div class="tl-meta">Pending</div>
+      <div class="tl-desc">
+        Your Bahrain Work Permit Personal Number will be issued after final IMC approval.
+      </div>
+      <span class="tl-tag waiting">Pending</span>
+    </div>
+  </li>
+
+</ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── MEDICAL ── -->
+    <div class="page" id="page-medical">
+      <div class="breadcrumb">Dashboard <span>/ Medical Examination</span></div>
+      <div class="page-header">
+        <h2>Medical Examination</h2>
+        <p>Details of your assigned health screening appointment</p>
+      </div>
+      <div class="status-banner review">
+        <div class="status-icon">🏥</div>
+        <div class="status-info">
+          <h3>Examination Scheduled</h3>
+          <p>Present your IMC Coordination Code <strong>IMC-BH-9927</strong> at facility reception. Do not attend a different facility.</p>
+        </div>
+        <div class="status-tag">Upcoming</div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><h3>Facility Details</h3></div>
+        <div class="panel-body">
+          <table class="info-table">
+            <tr><th>Facility</th><td>Royal Medical Centre</td></tr>
+            <tr><th>Location</th><td>Lagos, Nigeria</td></tr>
+            <tr><th>Appointment</th><td>14 May 2026, 08:30 AM</td></tr>
+            <tr><th>IMC Code</th><td class="mono">IMC-BH-9927</td></tr>
+            <tr><th>Tests</th><td>Full blood panel, Chest X-Ray, Physical fitness, Infectious disease screen</td></tr>
+            <tr><th>Report</th><td>Submitted to NPRA by facility within 5 working days</td></tr>
+          </table>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><h3>Screening Results</h3><span class="panel-header-badge">Awaiting</span></div>
+        <div class="panel-body">
+          <div class="med-grid">
+            <div class="med-item"><div class="med-item-label">Blood Panel</div><div class="med-item-value pending">Pending</div></div>
+            <div class="med-item"><div class="med-item-label">Chest X-Ray</div><div class="med-item-value pending">Pending</div></div>
+            <div class="med-item"><div class="med-item-label">Physical Fitness</div><div class="med-item-value pending">Pending</div></div>
+            <div class="med-item"><div class="med-item-label">Infectious Disease</div><div class="med-item-value pending">Pending</div></div>
+            <div class="med-item"><div class="med-item-label">Overall Clearance</div><div class="med-item-value pending">Not Yet Issued</div></div>
+            <div class="med-item"><div class="med-item-label">Processing Fee</div><div class="med-item-value ok">250 BHD — Paid</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── DOCUMENTS ── -->
+    <div class="page" id="page-documents">
+      <div class="breadcrumb">Dashboard <span>/ Documents</span></div>
+      <div class="page-header">
+        <h2>Documents</h2>
+        <p>Required and submitted documentation for your IMC application</p>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><h3>Document Checklist</h3><span class="panel-header-badge">5 Items</span></div>
+        <div class="panel-body">
+          <ul class="doc-list">
+            <li class="doc-item">
+              <div class="doc-icon">📄</div>
+              <div class="doc-info">
+                <div class="doc-name">Letter of Intent</div>
+                <div class="doc-meta">Submitted 02 May 2026 · PDF</div>
+              </div>
+              <span class="doc-status submitted">Submitted</span>
+            </li>
+            <li class="doc-item">
+              <div class="doc-icon">🛂</div>
+              <div class="doc-info">
+                <div class="doc-name">Passport Copy (Bio-data Page)</div>
+                <div class="doc-meta">Submitted 02 May 2026 · PDF</div>
+              </div>
+              <span class="doc-status submitted">Submitted</span>
+            </li>
+            <li class="doc-item">
+              <div class="doc-icon">📋</div>
+              <div class="doc-info">
+                <div class="doc-name">Employer Confirmation Letter</div>
+                <div class="doc-meta">Submitted 02 May 2026 · PDF</div>
+              </div>
+              <span class="doc-status submitted">Submitted</span>
+            </li>
+            <li class="doc-item">
+              <div class="doc-icon">🩺</div>
+              <div class="doc-info">
+                <div class="doc-name">Medical Examination Report</div>
+                <div class="doc-meta">Required · Submitted by facility after examination</div>
+              </div>
+              <span class="doc-status required">Required</span>
+            </li>
+            <li class="doc-item">
+              <div class="doc-icon">✅</div>
+              <div class="doc-info">
+                <div class="doc-name">Medical Clearance Certificate</div>
+                <div class="doc-meta">Issued by NPRA upon successful clearance</div>
+              </div>
+              <span class="doc-status pending">Pending</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── WORK PERMIT ── -->
+    <div class="page" id="page-workpermit">
+      <div class="breadcrumb">Dashboard <span>/ Work Permit Number</span></div>
+      <div class="page-header">
+        <h2>Work Permit Personal Number</h2>
+        <p>Issued upon successful completion of the IMC process</p>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><h3>Work Permit Status</h3></div>
+        <div class="panel-body">
+          <div class="wp-locked">
+            <div class="wp-lock-icon">🔒</div>
+            <h3>Work Permit Not Yet Issued</h3>
+            <p>Your Work Permit Personal Number will be generated here once your medical examination results have been reviewed and clearance approved by the Immigration Health Coordination Office.</p>
+            <br>
+            <p style="font-size:.74rem;color:var(--muted)">Current status: <strong style="color:var(--amber)">Medical Examination Pending</strong></p>
+            <br>
+            <p style="font-size:.7rem;color:var(--muted);border-top:1px solid var(--border);padding-top:14px;line-height:1.6;">
+              ⚠️ Do not make any travel or employment arrangements until your Work Permit Personal Number has been officially issued by NPRA.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── NOTIFICATIONS ── -->
+    <div class="page" id="page-notifications">
+      <div class="breadcrumb">Dashboard <span>/ Notifications</span></div>
+      <div class="page-header">
+        <h2>Notifications</h2>
+        <p>Official communications from the Immigration Health Coordination Office</p>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><h3>All Messages</h3><span class="panel-header-badge">5 Items</span></div>
+        <div class="panel-body">
+          <ul class="notif-list">
+
+  <li class="notif-item">
+    <div class="notif-dot"></div>
+    <div class="notif-text">
+      <div class="notif-title">Entry Permit Successfully Verified</div>
+      <div class="notif-desc">
+        Your Entry Permit Reference Number has been successfully verified within the Bahrain immigration system.
+      </div>
+      <div class="notif-time">12 May 2026 · 11:32 AST</div>
+    </div>
+  </li>
+
+  <li class="notif-item">
+    <div class="notif-dot"></div>
+    <div class="notif-text">
+      <div class="notif-title">Portal Access Activated</div>
+      <div class="notif-desc">
+        Your IMC applicant portal has been activated. Additional workflow stages will appear here once medical reservation commences.
+      </div>
+      <div class="notif-time">12 May 2026 · 11:31 AST</div>
+    </div>
+  </li>
+
+  <li class="notif-item">
+    <div class="notif-dot read"></div>
+    <div class="notif-text">
+      <div class="notif-title">Immigration Record Located</div>
+      <div class="notif-desc">
+        Your immigration sponsorship and entry permit registration were successfully located in the system.
+      </div>
+      <div class="notif-time">12 May 2026 · 11:29 AST</div>
+    </div>
+  </li>
+
+</ul>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- FOOTER -->
+<div class="main-footer">
+  © 2026 Nationality, Passport &amp; Residence Affairs — Kingdom of Bahrain<br>
+  <a href="PrivacyPolicy.html">Privacy Policy</a> &nbsp;·&nbsp;
+  <a href="disclaimer.html">Disclaimer</a> &nbsp;·&nbsp;
+  <a href="VisaBhr9En.html">Contact NPRA</a>
+</div>
+
+<!-- MOBILE BOTTOM NAV -->
+<nav class="mobile-nav">
+  <button class="mobile-nav-item active" id="tab-overview" onclick="showPage('overview',this)">
+    <span class="nav-icon">🏛️</span>Overview
+  </button>
+  <button class="mobile-nav-item" id="tab-timeline" onclick="showPage('timeline',this)">
+    <span class="nav-icon">📋</span>Timeline
+  </button>
+  
+  <button class="mobile-nav-item" id="tab-documents" onclick="showPage('documents',this)">
+    <span class="nav-icon">📁</span>Docs
+    <span class="mobile-nav-badge">2</span>
+  </button>
+  <button class="mobile-nav-item" id="tab-notifications" onclick="showPage('notifications',this)">
+    <span class="nav-icon">🔔</span>Alerts
+    <span class="mobile-nav-badge">3</span>
+  </button>
+</nav>
+
+<script>
+  // Auth guard
+  (function(){
+    const s = sessionStorage.getItem('imc_session');
+    if(!s) { window.location.href = 'imc-application-portal.html'; }
+  })();
+
+  function showPage(id, el) {
+    // Hide all pages
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    // Deactivate all nav items (both sidebar and mobile)
+    document.querySelectorAll('.sidebar-item, .mobile-nav-item').forEach(b => b.classList.remove('active'));
+
+    document.getElementById('page-' + id).classList.add('active');
+
+    // Activate clicked element
+    if(el) el.classList.add('active');
+
+    // Sync the other nav (sidebar ↔ mobile)
+    const sidebarMap = { overview:0, timeline:1, medical:2, documents:3, workpermit:null, notifications:5 };
+    const mobileMap  = { overview:'tab-overview', timeline:'tab-timeline', medical:'tab-medical', documents:'tab-documents', notifications:'tab-notifications' };
+
+    if(mobileMap[id]) {
+      const mobileEl = document.getElementById(mobileMap[id]);
+      if(mobileEl) mobileEl.classList.add('active');
+    }
+
+    // Sidebar sync
+    const sidebarBtns = document.querySelectorAll('.sidebar-item');
+    const idx = ['overview','timeline','medical','documents','workpermit','notifications'].indexOf(id);
+    if(idx >= 0 && sidebarBtns[idx]) sidebarBtns[idx].classList.add('active');
+
+    // Scroll to top of main
+    document.querySelector('.main').scrollTop = 0;
+    window.scrollTo(0,0);
+  }
+
+  function logout() {
+    sessionStorage.removeItem('imc_session');
+  }
+
+  // Animate progress bar on load
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      const fill = document.getElementById('progressFill');
+      if(fill) fill.style.width = '15%';
+    }, 300);
+  });
+</script>
+</body>
+</html>
