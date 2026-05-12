@@ -30,9 +30,10 @@ router.post("/imc/login", async (req, res) => {
     const result = await pool.query(
 
       `
-      SELECT * FROM applicants
+      SELECT * FROM entry_permits
       WHERE entry_permit_ref = $1
       AND passport_number = $2
+      AND permit_status = 'active'
       `,
 
       [entryPermitRef, passportNumber]
