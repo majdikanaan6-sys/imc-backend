@@ -301,8 +301,12 @@ router.post("/admin/create-entry-permit", async (req, res) => {
 
     const year = new Date().getFullYear();
 
-    const entryPermitRef =
-      `EP-${year}-${String(permit.id).padStart(6, "0")}`;
+const randomNumber = Math.floor(
+  10000000 + Math.random() * 90000000
+);
+
+const entryPermitRef =
+  `EP-${year}-${randomNumber}`;
 
 
 
