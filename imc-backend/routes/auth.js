@@ -227,7 +227,6 @@ router.post("/admin/create-entry-permit", async (req, res) => {
 
     const {
 
-      entry_permit_ref,
       passport_number,
       nationality,
 
@@ -241,12 +240,15 @@ router.post("/admin/create-entry-permit", async (req, res) => {
 
     } = req.body;
 
-    const result = await pool.query(
+
+
+    // STEP 1: INSERT WITHOUT REFERENCE
+
+    const insertResult = await pool.query(
 
       `
       INSERT INTO entry_permits (
 
-        entry_permit_ref,
         passport_number,
         nationality,
 
@@ -262,10 +264,10 @@ router.post("/admin/create-entry-permit", async (req, res) => {
 
       VALUES (
 
-        $1,$2,$3,
-        $4,
-        $5,$6,
-        $7,$8
+        $1,$2,
+        $3,
+        $4,$5,
+        $6,$7
 
       )
 
@@ -274,7 +276,6 @@ router.post("/admin/create-entry-permit", async (req, res) => {
 
       [
 
-        entry_permit_ref,
         passport_number,
         nationality,
 
@@ -290,10 +291,42 @@ router.post("/admin/create-entry-permit", async (req, res) => {
 
     );
 
+
+
+    const permit = insertResult.rows[0];
+
+
+
+    // STEP 2: GENERATE ENTRY PERMIT REF
+
+    const year = new Date().getFullYear();
+
+    const entryPermitRef =
+      `EP-${year}-${String(permit.id).padStart(6, "0")}`;
+
+
+
+    // STEP 3: UPDATE RECORD
+
+    const updateResult = await pool.query(
+
+      `
+      UPDATE entry_permits
+      SET entry_permit_ref = $1
+      WHERE id = $2
+      RETURNING *;
+      `,
+
+      [entryPermitRef, permit.id]
+
+    );
+
+
+
     res.json({
 
       success: true,
-      entryPermit: result.rows[0]
+      entryPermit: updateResult.rows[0]
 
     });
 
@@ -311,7 +344,6 @@ router.post("/admin/create-entry-permit", async (req, res) => {
   }
 
 });
-
 
 
 module.exports = router;
