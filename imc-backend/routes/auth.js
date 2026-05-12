@@ -47,16 +47,52 @@ router.post("/imc/login", async (req, res) => {
 
     const permit = result.rows[0];
 
+    // GET APPLICANT WORKFLOW RECORD
+
+    const applicantResult = await pool.query(
+
+      `
+      SELECT *
+      FROM applicants
+      WHERE entry_permit_ref = $1
+      `,
+
+      [permit.entry_permit_ref]
+
+    );
+
+    const applicant = applicantResult.rows[0] || {};
+
+
     const token = jwt.sign(
       { applicantId: permit.id },
       process.env.JWT_SECRET,
       { expiresIn: "1d" }
     );
 
+       // RETURN FULL APPLICANT WORKFLOW DATA
+
     res.json({
+
       success: true,
+
       token,
-      applicant: permit,
+
+      applicant: {
+
+        ...applicant,
+
+        // Always trust identity data from entry_permits
+        entry_permit_ref: permit.entry_permit_ref,
+        passport_number: permit.passport_number,
+        full_name: permit.full_name,
+        nationality: permit.nationality,
+        sponsor_name: permit.sponsor_name,
+        sponsor_airline: permit.sponsor_airline,
+        permit_status: permit.permit_status
+
+      }
+
     });
 
   } catch (error) {
