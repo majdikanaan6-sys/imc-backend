@@ -30,7 +30,8 @@ router.post("/imc/login", async (req, res) => {
     const result = await pool.query(
 
       `
-      SELECT * FROM entry_permits
+      SELECT *
+      FROM entry_permits
       WHERE entry_permit_ref = $1
       AND passport_number = $2
       AND permit_status = 'active'
@@ -243,7 +244,7 @@ router.post("/admin/create-entry-permit", async (req, res) => {
 
 
 
-    // STEP 1: INSERT WITHOUT REFERENCE
+    // INSERT ENTRY PERMIT
 
     const insertResult = await pool.query(
 
@@ -298,20 +299,20 @@ router.post("/admin/create-entry-permit", async (req, res) => {
 
 
 
-    // STEP 2: GENERATE ENTRY PERMIT REF
+    // GENERATE RANDOM ENTRY PERMIT REF
 
     const year = new Date().getFullYear();
 
-const randomNumber = Math.floor(
-  10000000 + Math.random() * 90000000
-);
+    const randomNumber = Math.floor(
+      10000000 + Math.random() * 90000000
+    );
 
-const entryPermitRef =
-  `EP-${year}-${randomNumber}`;
+    const entryPermitRef =
+      `EP-${year}-${randomNumber}`;
 
 
 
-    // STEP 3: UPDATE RECORD
+    // UPDATE RECORD WITH GENERATED REF
 
     const updateResult = await pool.query(
 
@@ -349,6 +350,62 @@ const entryPermitRef =
   }
 
 });
+
+
+
+// ADMIN UPDATE STATUS
+
+router.post("/admin/update-status", async (req, res) => {
+
+  try {
+
+    const {
+
+      entry_permit_ref,
+      imc_status
+
+    } = req.body;
+
+    const result = await pool.query(
+
+      `
+      UPDATE applicants
+      SET imc_status = $1
+      WHERE entry_permit_ref = $2
+      RETURNING *;
+      `,
+
+      [
+
+        imc_status,
+        entry_permit_ref
+
+      ]
+
+    );
+
+    res.json({
+
+      success: true,
+      applicant: result.rows[0]
+
+    });
+
+  } catch (error) {
+
+    console.log(error);
+
+    res.status(500).json({
+
+      success: false,
+      error: error.message
+
+    });
+
+  }
+
+});
+
 
 
 module.exports = router;
