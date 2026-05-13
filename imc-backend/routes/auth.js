@@ -1,7 +1,7 @@
 const express = require("express");
 const jwt = require("jsonwebtoken");
 const pool = require("../db");
-
+const axios = require("axios");
 const router = express.Router();
 
 // ── AUTH MIDDLEWARE ──────────────────────────────────────────────────────────
