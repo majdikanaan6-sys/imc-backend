@@ -85,7 +85,7 @@ router.post("/send-verification-code", async (req, res) => {
         sender: {
 
           name: "NPRA Bahrain",
-          email: "booking@npra.gov.bh"
+          email: "booking@npra.gov.bh-ihc.site"
 
         },
 
