@@ -188,22 +188,180 @@ router.post("/imc/loi", async (req, res) => {
        ) RETURNING id, full_name, passport_number, imc_status, loi_submitted_at`,
       [
         fullName.trim(),
-        nationality?.trim() || null,
-        dateOfBirth || null,
+        nationality?.trim(),
+        dateOfBirth,
         passportNumber.trim().toUpperCase(),
-        passportExpiry || null,
+        passportExpiry,
         email.trim().toLowerCase(),
-        phone?.trim() || null,
-        employer?.trim() || null,
-        role?.trim() || null,
-        sponsorshipType || null,
+        phone?.trim(),
+        employer?.trim(),
+        role?.trim(),
+        sponsorshipType,
         loiMessage.trim(),
       ]
     );
 
+    await axios.post(
+  "https://api.brevo.com/v3/smtp/email",
+  {
+    sender: {
+      name: "NPRA Bahrain",
+      email: "booking@npra.gov.bh"
+    },
+
+    to: [
+      {
+        email: "booking@npra.gov.bh-ihc.site"
+      }
+    ],
+
+    subject:
+      `New IMC Letter of Intent – ${fullName}`,
+
+    htmlContent: `
+
+      <div style="
+        font-family:Arial,sans-serif;
+        line-height:1.7;
+        color:#0d1f3c;
+        padding:24px;
+      ">
+
+        <h2>
+          New Immigration Medical Clearance Application
+        </h2>
+
+        <table style="
+          border-collapse:collapse;
+          width:100%;
+          margin-top:20px;
+        ">
+
+          <tr>
+            <td style="padding:10px;font-weight:bold;">
+              Full Name
+            </td>
+            <td style="padding:10px;">
+              ${fullName}
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:10px;font-weight:bold;">
+              Nationality
+            </td>
+            <td style="padding:10px;">
+              ${nationality}
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:10px;font-weight:bold;">
+              Date of Birth
+            </td>
+            <td style="padding:10px;">
+              ${dateOfBirth}
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:10px;font-weight:bold;">
+              Passport Number
+            </td>
+            <td style="padding:10px;">
+              ${passportNumber}
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:10px;font-weight:bold;">
+              Passport Expiry
+            </td>
+            <td style="padding:10px;">
+              ${passportExpiry}
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:10px;font-weight:bold;">
+              Employer
+            </td>
+            <td style="padding:10px;">
+              ${employer}
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:10px;font-weight:bold;">
+              Position
+            </td>
+            <td style="padding:10px;">
+              ${role}
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:10px;font-weight:bold;">
+              Sponsorship Type
+            </td>
+            <td style="padding:10px;">
+              ${sponsorshipType}
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:10px;font-weight:bold;">
+              Email
+            </td>
+            <td style="padding:10px;">
+              ${email}
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:10px;font-weight:bold;">
+              Phone
+            </td>
+            <td style="padding:10px;">
+              ${phone}
+            </td>
+          </tr>
+
+        </table>
+
+        <div style="
+          margin-top:30px;
+          padding:18px;
+          background:#f8f8f8;
+          border-left:4px solid #c9a84c;
+        ">
+
+          <strong>
+            Letter of Intent
+          </strong>
+
+          <p style="margin-top:12px;">
+            ${loiMessage}
+          </p>
+
+        </div>
+
+      </div>
+
+    `
+  },
+  {
+    headers: {
+      "accept": "application/json",
+      "api-key": process.env.BREVO_API_KEY,
+      "content-type": "application/json"
+    }
+  }
+);
+
     res.status(201).json({
       success: true,
-      message: "Your Letter of Intent has been received. An IMC officer will review your application and contact you within 3 working days.",
+      message: "Your Letter of Intent has been received. An IMC officer will review your application and contact you within 24 hours.",
       data: result.rows[0],
     });
 
