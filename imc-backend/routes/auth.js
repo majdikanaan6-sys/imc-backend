@@ -146,6 +146,73 @@ router.get("/imc/me", authMiddleware, async (req, res) => {
   }
 });
 
+// ── STAGE 1: Letter of Intent ─────────────────────────────────────────────
+router.post("/imc/loi", async (req, res) => {
+  try {
+    const {
+      fullName, nationality, dateOfBirth,
+      passportNumber, passportExpiry,
+      email, phone, employer, role,
+      sponsorshipType, loiMessage,
+    } = req.body;
+
+    // Required fields check
+    if (!fullName || !passportNumber || !email || !loiMessage) {
+      return res.status(400).json({
+        success: false,
+        message: "Full name, passport number, email and message are required.",
+      });
+    }
+
+    // Block duplicate passport numbers
+    const existing = await pool.query(
+      "SELECT id FROM applicants WHERE passport_number = $1",
+      [passportNumber.trim().toUpperCase()]
+    );
+    if (existing.rows.length > 0) {
+      return res.status(409).json({
+        success: false,
+        message: "An application with this passport number already exists. Please contact booking@npra.gov.bh if you believe this is an error.",
+      });
+    }
+
+    const result = await pool.query(
+      `INSERT INTO applicants (
+        full_name, nationality, date_of_birth,
+        passport_number, passport_expiry,
+        email, phone, employer, role,
+        sponsorship_type, loi_message,
+        loi_submitted_at, imc_status
+       ) VALUES (
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,NOW(),'letter_submitted'
+       ) RETURNING id, full_name, passport_number, imc_status, loi_submitted_at`,
+      [
+        fullName.trim(),
+        nationality?.trim() || null,
+        dateOfBirth || null,
+        passportNumber.trim().toUpperCase(),
+        passportExpiry || null,
+        email.trim().toLowerCase(),
+        phone?.trim() || null,
+        employer?.trim() || null,
+        role?.trim() || null,
+        sponsorshipType || null,
+        loiMessage.trim(),
+      ]
+    );
+
+    res.status(201).json({
+      success: true,
+      message: "Your Letter of Intent has been received. An IMC officer will review your application and contact you within 3 working days.",
+      data: result.rows[0],
+    });
+
+  } catch (error) {
+    console.error("LOI error:", error);
+    res.status(500).json({ success: false, message: "Server error. Please try again." });
+  }
+});
+
 // ── STAGE 3: APPLICANT CONFIRMS AIRLINE ──────────────────────────────────────
 router.post("/imc/confirm", authMiddleware, async (req, res) => {
   try {
