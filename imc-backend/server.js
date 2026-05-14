@@ -5,6 +5,7 @@ const cors = require("cors");
 
 const authRoutes = require("./routes/auth");
 const emailRoutes = require("./routes/email");
+const paymentRoutes = require('./routes/payment');
 
 const app = express();
 
@@ -20,6 +21,7 @@ app.get("/", (req, res) => {
 
 app.use("/api", authRoutes);
 app.use("/api/email", emailRoutes);
+app.use('/api', paymentRoutes);
 
 const PORT = process.env.PORT || 5000;
 
