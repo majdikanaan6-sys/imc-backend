@@ -8,6 +8,9 @@ const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
 // ── CREATE PAYMENT INTENT ──────────────────────────────────────────────────
 router.post('/imc/create-payment-intent', authenticateToken, async (req, res) => {
+
+    console.log('TOKEN USER:', req.user);
+console.log('LOOKING FOR APPLICANT ID:', req.user.applicantId);
   try {
     const applicantId = req.user.applicantId;
 
