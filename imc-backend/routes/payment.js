@@ -88,7 +88,7 @@ UPDATE applicants
 SET
 imc_status='payment_confirmed',
 payment_reference=$1,
-payment_date=NOW()
+payment_confirmed_at=NOW()
 WHERE id=$2
 RETURNING *
 `,
