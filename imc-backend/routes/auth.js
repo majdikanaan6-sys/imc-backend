@@ -446,58 +446,7 @@ router.post("/imc/confirm", authMiddleware, async (req, res) => {
   }
 });
 
-// ── STAGE 5: INVOICE REQUEST ─────────────────────────────────────────────────
-router.post("/imc/invoice-request", authMiddleware, async (req, res) => {
-  try {
-    // Get passport number from entry_permits via JWT id
-    const permitResult = await pool.query(
-      "SELECT passport_number, entry_permit_ref FROM entry_permits WHERE id = $1",
-      [req.applicant.applicantId]
-    );
 
-    if (permitResult.rows.length === 0) {
-      return res.status(404).json({ success: false, message: "Permit not found" });
-    }
-
-    const { passport_number, entry_permit_ref } = permitResult.rows[0];
-
-    const current = await pool.query(
-      "SELECT imc_status FROM applicants WHERE passport_number = $1",
-      [passport_number]
-    );
-
-    if (!current.rows[0] || current.rows[0].imc_status !== "invoice_requested") {
-      return res.status(400).json({
-        success: false,
-        message: `Invoice not available at current stage: ${current.rows[0]?.imc_status}`,
-      });
-    }
-
-    const invoiceRef =
-      "INV-" + new Date().getFullYear() + "-" +
-      entry_permit_ref.replace("EP-", "").replace(/-/g, "");
-
-    const result = await pool.query(
-      `UPDATE applicants
-       SET invoice_ref = $1,
-           invoice_requested_at = NOW(),
-           imc_status = 'payment_pending'
-       WHERE passport_number = $2
-       RETURNING imc_status, invoice_ref, invoice_requested_at`,
-      [invoiceRef, passport_number]
-    );
-
-    res.json({
-      success: true,
-      message: "Invoice request submitted. You will receive payment instructions within 1 working day. Do not make any payment until you receive official banking details from NPRA.",
-      data: result.rows[0],
-    });
-
-  } catch (error) {
-    console.error("Invoice error:", error);
-    res.status(500).json({ success: false, message: "Server error" });
-  }
-});
 
 // ── ADMIN: CREATE ENTRY PERMIT ────────────────────────────────────────────────
 router.post("/admin/create-entry-permit", async (req, res) => {

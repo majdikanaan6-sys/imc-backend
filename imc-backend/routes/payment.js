@@ -1,156 +1,144 @@
 const express = require('express');
-const Stripe = require('stripe');
 const pool = require('../db');
 const authenticateToken = require('../middleware/authenticateToken');
 
 const router = express.Router();
-const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
-// ── CREATE PAYMENT INTENT ──────────────────────────────────────────────────
+// ── HELPER: bridge JWT (entry_permits.id) → applicants row ────────────────
+// JWT contains entry_permits.id — we get applicant via passport_number
+async function getApplicant(entryPermitId) {
+  const permitResult = await pool.query(
+    'SELECT * FROM entry_permits WHERE id = $1',
+    [entryPermitId]
+  );
+  if (permitResult.rows.length === 0) return { permit: null, applicant: null };
+
+  const permit = permitResult.rows[0];
+
+  const applicantResult = await pool.query(
+    'SELECT * FROM applicants WHERE passport_number = $1',
+    [permit.passport_number]
+  );
+
+  return { permit, applicant: applicantResult.rows[0] || null };
+}
+
+// ── CREATE PAYMENT INTENT ─────────────────────────────────────────────────
 router.post('/imc/create-payment-intent', authenticateToken, async (req, res) => {
-
-    console.log('TOKEN USER:', req.user);
-console.log('LOOKING FOR APPLICANT ID:', req.user.applicantId);
   try {
-    const applicantId = req.user.applicantId;
+    const Stripe = require('stripe');
+    const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
-    const result = await pool.query(
-      `SELECT * FROM applicants WHERE id = $1`,
-      [applicantId]
-    );
+    const { permit, applicant } = await getApplicant(req.user.applicantId);
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ success: false, message: 'Applicant not found' });
-    }
-
-    const applicant = result.rows[0];
+    if (!permit)    return res.status(404).json({ success: false, message: 'Permit not found' });
+    if (!applicant) return res.status(404).json({ success: false, message: 'Applicant record not found' });
 
     if (applicant.imc_status !== 'invoice_requested') {
-      return res.status(400).json({ success: false, message: 'Payment unavailable for current status' });
+      return res.status(400).json({
+        success: false,
+        message: `Payment not available at current stage: ${applicant.imc_status}`,
+      });
     }
 
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: 66300,
+      amount: 66300, // $663.00 USD in cents
       currency: 'usd',
       automatic_payment_methods: { enabled: true },
       metadata: {
-        applicantId: applicant.id,
-        entryPermit: applicant.entry_permit_ref
-      }
+        entry_permit_ref: applicant.entry_permit_ref,
+        passport_number:  applicant.passport_number,
+        full_name:        permit.full_name,
+      },
     });
 
     res.json({ success: true, clientSecret: paymentIntent.client_secret });
 
   } catch (error) {
-    console.error(error);
+    console.error('Create payment intent error:', error);
     res.status(500).json({ success: false, message: 'Could not create payment intent' });
   }
 });
 
-// ── CONFIRM PAYMENT ────────────────────────────────────────────────────────
+// ── CONFIRM PAYMENT ───────────────────────────────────────────────────────
 router.post('/imc/confirm-payment', authenticateToken, async (req, res) => {
   try {
-    const { paymentIntentId } = req.body;
-    const applicantId = req.user.applicantId;
+    const Stripe = require('stripe');
+    const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
+    const { paymentIntentId } = req.body;
+    const { permit, applicant } = await getApplicant(req.user.applicantId);
+
+    if (!permit)    return res.status(404).json({ success: false, message: 'Permit not found' });
+    if (!applicant) return res.status(404).json({ success: false, message: 'Applicant record not found' });
+
+    // Verify with Stripe that payment actually succeeded
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
 
     if (paymentIntent.status !== 'succeeded') {
-      return res.status(400).json({ success: false, message: 'Payment not completed' });
+      return res.status(400).json({
+        success: false,
+        message: 'Payment has not been completed on Stripe.',
+      });
     }
 
     const result = await pool.query(
       `UPDATE applicants
-       SET imc_status = 'payment_confirmed',
-           payment_reference = $1,
+       SET imc_status           = 'payment_confirmed',
+           payment_reference    = $1,
            payment_confirmed_at = NOW()
-       WHERE id = $2
+       WHERE passport_number = $2
        RETURNING *`,
-      [paymentIntentId, applicantId]
+      [paymentIntentId, permit.passport_number]
     );
 
     res.json({ success: true, applicant: result.rows[0] });
 
   } catch (error) {
-    console.error(error);
+    console.error('Confirm payment error:', error);
     res.status(500).json({ success: false, message: 'Payment confirmation failed' });
   }
 });
 
-// ── MANUAL INVOICE REQUEST ─────────────────────────────────────────────────
+// ── MANUAL INVOICE REQUEST ────────────────────────────────────────────────
 router.post('/imc/invoice-request', authenticateToken, async (req, res) => {
   try {
-    const applicantId = req.user.applicantId;
-    const invoiceRef = 'INV-' + Math.floor(100000 + Math.random() * 900000);
+    const { permit, applicant } = await getApplicant(req.user.applicantId);
+
+    if (!permit)    return res.status(404).json({ success: false, message: 'Permit not found' });
+    if (!applicant) return res.status(404).json({ success: false, message: 'Applicant record not found' });
+
+    if (applicant.imc_status !== 'invoice_requested') {
+      return res.status(400).json({
+        success: false,
+        message: `Invoice request not available at current stage: ${applicant.imc_status}`,
+      });
+    }
+
+    const invoiceRef =
+      'INV-' + new Date().getFullYear() + '-' +
+      (applicant.entry_permit_ref || '').replace('EP-', '').replace(/-/g, '');
 
     const result = await pool.query(
       `UPDATE applicants
-       SET imc_status = 'payment_pending',
-           invoice_ref = $1
-       WHERE id = $2
+       SET imc_status           = 'payment_pending',
+           invoice_ref          = $1,
+           invoice_requested_at = NOW()
+       WHERE passport_number = $2
        RETURNING *`,
-      [invoiceRef, applicantId]
+      [invoiceRef, permit.passport_number]
     );
 
-    res.json({ success: true, invoiceRef, applicant: result.rows[0] });
+    res.json({
+      success: true,
+      message: 'Manual invoice request submitted. The NPRA IMC Office will contact you with official bank transfer details within 1 working day.',
+      invoiceRef,
+      applicant: result.rows[0],
+    });
 
   } catch (error) {
-    console.error(error);
+    console.error('Invoice request error:', error);
     res.status(500).json({ success: false, message: 'Could not create invoice request' });
-  }
-});
-
-// ── ADMIN: UPDATE STATUS ───────────────────────────────────────────────────
-router.post('/admin/update-status', async (req, res) => {
-  try {
-    // Auth check — must be inside the route handler
-    const adminSecret = req.headers['x-admin-secret'];
-    if (adminSecret !== process.env.ADMIN_SECRET) {
-      return res.status(401).json({ success: false, message: 'Unauthorised' });
-    }
-
-    const { entryPermitRef, status } = req.body;
-
-    const timestampField = {
-      'payment_confirmed':           'payment_confirmed_at',
-      'medical_scheduled':           'imc_code_issued_at',
-      'medical_completed':           null,
-      'personal_number_issued':      'personal_number_issued_at',
-      'completed':                   null,
-      'entry_permit_verified':       null,
-      'medical_reservation_pending': null,
-    }[status];
-
-    let query;
-
-    if (timestampField) {
-      query = `
-        UPDATE applicants
-        SET imc_status = $1,
-            ${timestampField} = NOW()
-        WHERE entry_permit_ref = $2
-        RETURNING *
-      `;
-    } else {
-      query = `
-        UPDATE applicants
-        SET imc_status = $1
-        WHERE entry_permit_ref = $2
-        RETURNING *
-      `;
-    }
-
-    const result = await pool.query(query, [status, entryPermitRef]);
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ success: false, message: 'Applicant not found' });
-    }
-
-    res.json({ success: true, applicant: result.rows[0] });
-
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ success: false, message: 'Status update failed' });
   }
 });
 
