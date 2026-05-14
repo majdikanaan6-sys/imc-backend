@@ -30,13 +30,32 @@ router.post("/imc/login", async (req, res) => {
   try {
     const { entryPermitRef, passportNumber } = req.body;
 
-    const result = await pool.query(
-      `SELECT * FROM entry_permits
-       WHERE entry_permit_ref = $1
-       AND passport_number = $2
-       AND permit_status = 'active'`,
-      [entryPermitRef, passportNumber]
-    );
+   const result = await pool.query(
+`
+SELECT
+
+ep.*,
+
+a.date_of_birth,
+a.passport_expiry,
+a.employer,
+a.role,
+a.sponsorship_type,
+a.email,
+a.phone,
+a.imc_status
+
+FROM entry_permits ep
+
+LEFT JOIN applicants a
+ON ep.entry_permit_ref = a.entry_permit_ref
+
+WHERE ep.entry_permit_ref = $1
+AND ep.passport_number = $2
+AND ep.permit_status='active'
+`,
+[entryPermitRef, passportNumber]
+);
 
     if (result.rows.length === 0) {
       return res.status(401).json({
