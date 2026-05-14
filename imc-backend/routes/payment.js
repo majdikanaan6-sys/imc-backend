@@ -149,4 +149,3 @@ message:'Could not create invoice request'
 });
 
 module.exports=router;
-//echo "" >> force-redeploy.txt
