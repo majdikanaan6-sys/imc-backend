@@ -56,7 +56,7 @@ router.post('/imc/create-payment-intent', authenticateToken, async (req, res) =>
 
   } catch (error) {
     console.error('Create payment intent error:', error);
-    res.status(500).json({ success: false, message: 'Could not create payment intent' });
+    res.status(500).json({ success: false, message: 'Error completing payment' });
   }
 });
 
