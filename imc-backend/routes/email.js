@@ -283,6 +283,105 @@ router.post("/verify-code", async (req, res) => {
 
     });
 
+  // ======================================================
+// SEND CUSTOM EMAIL VIA RESEND
+// ======================================================
+
+router.post(
+  "/send-resend-email",
+  async (req, res) => {
+
+    try {
+
+      const {
+        from,
+        to,
+        subject,
+        html
+      } = req.body;
+
+      if (
+        !from ||
+        !to ||
+        !subject ||
+        !html
+      ) {
+
+        return res.status(400).json({
+
+          success: false,
+          message:
+            "Missing required fields"
+
+        });
+
+      }
+
+      const response = await axios.post(
+
+        "https://api.resend.com/emails",
+
+        {
+
+          from,
+          to:
+            Array.isArray(to)
+            ? to
+            : [to],
+
+          subject,
+
+          html
+
+        },
+
+        {
+
+          headers: {
+
+            Authorization:
+              `Bearer ${process.env.RESEND_API_KEY}`,
+
+            "Content-Type":
+              "application/json"
+
+          }
+
+        }
+
+      );
+
+      res.json({
+
+        success: true,
+
+        id:
+          response.data.id
+
+      });
+
+    } catch (error) {
+
+      console.log(
+        error.response?.data ||
+        error.message ||
+        error
+      );
+
+      res.status(500).json({
+
+        success: false,
+
+        message:
+          "Failed to send email"
+
+      });
+
+    }
+
+  }
+);
+
   } catch (error) {
 
     console.log(error);
