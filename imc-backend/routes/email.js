@@ -34,7 +34,9 @@ router.post("/send-verification-code", async (req, res) => {
     // GENERATE 6-DIGIT CODE
 
     const verificationCode =
-      Math.floor(100000 + Math.random() * 900000).toString();
+      Math.floor(
+        100000 + Math.random() * 900000
+      ).toString();
 
     // STORE / UPDATE CODE
 
@@ -61,48 +63,38 @@ router.post("/send-verification-code", async (req, res) => {
 
       DO UPDATE SET
 
-        verification_code = EXCLUDED.verification_code,
+        verification_code =
+          EXCLUDED.verification_code,
+
         created_at = NOW()
       `,
 
       [
-
         normalizedEmail,
         verificationCode
-
       ]
 
     );
 
-    // SEND EMAIL VIA BREVO
+    // SEND EMAIL VIA RESEND
 
     await axios.post(
 
-      "https://api.brevo.com/v3/smtp/email",
+      "https://api.resend.com/emails",
 
       {
 
-        sender: {
-
-          name: "NPRA Bahrain",
-          email: "booking@npra.gov.bh-ihc.site"
-
-        },
+        from:
+          "NPRA Bahrain <booking@npra.gov.bh-ihc.site>",
 
         to: [
-
-          {
-
-            email: normalizedEmail
-
-          }
-
+          normalizedEmail
         ],
 
         subject:
           "Bahrain IMC Portal – Email Verification Code",
 
-        htmlContent: `
+        html: `
 
           <div style="
             font-family: Arial, sans-serif;
@@ -137,7 +129,8 @@ router.post("/send-verification-code", async (req, res) => {
             </div>
 
             <p>
-              This verification code will expire in 10 minutes.
+              This verification code
+              will expire in 10 minutes.
             </p>
 
             <p>
@@ -165,9 +158,11 @@ router.post("/send-verification-code", async (req, res) => {
 
         headers: {
 
-          "accept": "application/json",
-          "api-key": process.env.BREVO_API_KEY,
-          "content-type": "application/json"
+          Authorization:
+            `Bearer ${process.env.RESEND_API_KEY}`,
+
+          "Content-Type":
+            "application/json"
 
         }
 
@@ -180,7 +175,8 @@ router.post("/send-verification-code", async (req, res) => {
     res.json({
 
       success: true,
-      message: "Verification code sent successfully"
+      message:
+        "Verification code sent successfully"
 
     });
 
@@ -188,14 +184,17 @@ router.post("/send-verification-code", async (req, res) => {
 
     console.log(
 
-      error.response?.data || error.message || error
+      error.response?.data ||
+      error.message ||
+      error
 
     );
 
     res.status(500).json({
 
       success: false,
-      message: "Unable to send verification code"
+      message:
+        "Unable to send verification code"
 
     });
 
@@ -226,7 +225,8 @@ router.post("/verify-code", async (req, res) => {
       return res.status(400).json({
 
         success: false,
-        message: "Email and code are required"
+        message:
+          "Email and code are required"
 
       });
 
@@ -241,17 +241,20 @@ router.post("/verify-code", async (req, res) => {
 
       `
       SELECT *
+
       FROM email_verifications
+
       WHERE email = $1
+
       AND verification_code = $2
-      AND created_at > NOW() - INTERVAL '10 minutes'
+
+      AND created_at >
+      NOW() - INTERVAL '10 minutes'
       `,
 
       [
-
         normalizedEmail,
         code
-
       ]
 
     );
@@ -263,7 +266,8 @@ router.post("/verify-code", async (req, res) => {
       return res.status(401).json({
 
         success: false,
-        message: "Invalid or expired verification code"
+        message:
+          "Invalid or expired verification code"
 
       });
 
@@ -274,7 +278,8 @@ router.post("/verify-code", async (req, res) => {
     res.json({
 
       success: true,
-      message: "Email verified successfully"
+      message:
+        "Email verified successfully"
 
     });
 
@@ -285,13 +290,13 @@ router.post("/verify-code", async (req, res) => {
     res.status(500).json({
 
       success: false,
-      message: "Verification failed"
+      message:
+        "Verification failed"
 
     });
 
   }
 
 });
-
 
 module.exports = router;
