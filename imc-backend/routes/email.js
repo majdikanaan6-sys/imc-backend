@@ -138,7 +138,11 @@ router.post('/admin/send-loi-response', async (req, res) => {
       return res.status(401).json({ success: false, message: 'Unauthorised' });
     }
 
-    const { entryPermitRef } = req.body;
+    const { email } = req.body;
+    const result = await pool.query(
+  `SELECT * FROM applicants WHERE email = $1`,
+  [email.trim().toLowerCase()]
+);
 
     // Fetch applicant from DB
     const result = await pool.query(
