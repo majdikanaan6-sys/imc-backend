@@ -154,7 +154,7 @@ router.post('/admin/send-loi-response', async (req, res) => {
 
     // Generate reference number
     const year    = new Date().getFullYear();
-    const refNum  = String(a.id).padStart(3, '0');
+    const refNum = Math.floor(1000 + Math.random() * 9000).toString();
     const date    = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 
     // Build HTML — replace placeholders dynamically
