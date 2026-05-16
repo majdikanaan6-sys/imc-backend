@@ -138,17 +138,15 @@ router.post('/admin/send-loi-response', async (req, res) => {
       return res.status(401).json({ success: false, message: 'Unauthorised' });
     }
 
-    const { email } = req.body;
-    const result = await pool.query(
-  `SELECT * FROM applicants WHERE email = $1`,
-  [email.trim().toLowerCase()]
+   const { passportNumber } = req.body;
+
+const result = await pool.query(
+  `SELECT * FROM applicants WHERE passport_number = $1 ORDER BY created_at DESC LIMIT 1`,
+  [passportNumber.trim().toUpperCase()]
 );
 
     // Fetch applicant from DB
-    const result = await pool.query(
-      `SELECT * FROM applicants WHERE entry_permit_ref = $1`,
-      [entryPermitRef]
-    );
+  
 
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, message: 'Applicant not found' });
