@@ -239,7 +239,7 @@ function getEmailTemplate() {
       Thank you for submitting your Letter of Intent to the Immigration Health Coordination Office of the Nationality, Passport &amp; Residence Affairs (NPRA), Kingdom of Bahrain.
     </p>
     <p style="margin:0 0 28px;font-family:Georgia,'Times New Roman',serif;font-size:14px;color:#3a4a5c;line-height:1.75;">
-      Your application has been received and is currently under review. To proceed with the issuance of your IMC coordination code, we require the following information and documents. <strong>Please arrange to provide these at your earliest convenience.</strong>
+      Your application has been received and is currently under review. To proceed with the reservation of your medical examination, we require the following information and documents. <strong>Please arrange to provide these at your earliest convenience.</strong>
     </p>
 
     <!-- REQUIREMENT 1 -->
@@ -324,13 +324,13 @@ function getEmailTemplate() {
         <p style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:13px;color:#3a4a5c;line-height:1.7;">
           Please reply to this email with the above information and attach all relevant documents. Alternatively, send to
           <a href="mailto:booking@npra.gov.bh" style="color:#0a1628;font-weight:600;text-decoration:none;border-bottom:1px solid #c9a84c;">booking@npra.gov.bh</a>.
-          Please quote your passport number <strong>{{PASSPORT_NUMBER}}</strong> in the subject line of all correspondence.
+          Please quote your passport number <strong>{{PASSPORT_NUMBER}}</strong> in the subject line of all correspondence and ensure that your sponsor email address is correctly placed in cc.
         </p>
       </td></tr>
     </table>
 
     <p style="margin:0 0 28px;font-family:Georgia,'Times New Roman',serif;font-size:14px;color:#3a4a5c;line-height:1.75;">
-      Once we receive all required information, an IMC officer will issue your <strong>IMC Coordination Code</strong> and <strong>Entry Permit Reference Number</strong> within <strong>1–3 working days</strong>.
+      Once we receive all required information, we will commence the reservation process of your <strong>Medical Examination</strong> promptly within <strong>24 hours</strong>.
     </p>
 
     <p style="margin:0 0 6px;font-family:Georgia,'Times New Roman',serif;font-size:14px;color:#3a4a5c;">Yours sincerely,</p>
