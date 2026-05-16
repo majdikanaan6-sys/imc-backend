@@ -165,7 +165,7 @@ router.post('/admin/send-loi-response', async (req, res) => {
       .replace(/{{DATE}}/g,            date)
       .replace(/{{PASSPORT_NUMBER}}/g, a.passport_number  || '—');
 
-    // Send via Resend
+    // Send via Resend good
     await axios.post(
       'https://api.resend.com/emails',
       {
