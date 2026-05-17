@@ -132,21 +132,17 @@ router.post("/send-resend-email", async (req, res) => {
 // ── SEND LOI RESPONSE EMAIL ────────────────────────────────
 router.post('/admin/send-loi-response', async (req, res) => {
   try {
-    // Admin auth check
     const adminSecret = req.headers['x-admin-secret'];
     if (adminSecret !== process.env.ADMIN_SECRET) {
       return res.status(401).json({ success: false, message: 'Unauthorised' });
     }
 
-   const { passportNumber } = req.body;
+    const { passportNumber, type = 'loi' } = req.body;
 
-const result = await pool.query(
-  `SELECT * FROM applicants WHERE passport_number = $1 ORDER BY created_at DESC LIMIT 1`,
-  [passportNumber.trim().toUpperCase()]
-);
-
-    // Fetch applicant from DB
-  
+    const result = await pool.query(
+      `SELECT * FROM applicants WHERE passport_number = $1 ORDER BY created_at DESC LIMIT 1`,
+      [passportNumber.trim().toUpperCase()]
+    );
 
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, message: 'Applicant not found' });
@@ -154,26 +150,40 @@ const result = await pool.query(
 
     const a = result.rows[0];
 
-    // Generate reference number
-    const year    = new Date().getFullYear();
+    const year   = new Date().getFullYear();
     const refNum = Math.floor(1000 + Math.random() * 9000).toString();
-    const date    = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+    const date   = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 
-    // Build HTML — replace placeholders dynamically
-    const html = getEmailTemplate()
-      .replace(/{{FULL_NAME}}/g,       a.full_name        || '—')
-      .replace(/{{YEAR}}/g,            String(year))
-      .replace(/{{REF_NUMBER}}/g,      refNum)
-      .replace(/{{DATE}}/g,            date)
-      .replace(/{{PASSPORT_NUMBER}}/g, a.passport_number  || '—');
+    let html, subject;
 
-    // Send via Resend good
+    if (type === 'istanbul') {
+      html = getIstanbulTemplate()
+        .replace(/{{FULL_NAME}}/g,        a.full_name        || '—')
+        .replace(/{{YEAR}}/g,             String(year))
+        .replace(/{{REF_NUMBER}}/g,       refNum)
+        .replace(/{{DATE}}/g,             date)
+        .replace(/{{PASSPORT_NUMBER}}/g,  a.passport_number  || '—')
+        .replace(/{{ENTRY_PERMIT_REF}}/g, a.entry_permit_ref || '—');
+
+      subject = `IMC Medical Examination — Alternative Arrangement via Istanbul | Ref: NPRA/IMC/MED/${year}/${refNum}`;
+
+    } else {
+      html = getLoiTemplate()
+        .replace(/{{FULL_NAME}}/g,        a.full_name        || '—')
+        .replace(/{{YEAR}}/g,             String(year))
+        .replace(/{{REF_NUMBER}}/g,       refNum)
+        .replace(/{{DATE}}/g,             date)
+        .replace(/{{PASSPORT_NUMBER}}/g,  a.passport_number  || '—');
+
+      subject = `IMC Application – Required Documents | Ref: NPRA/IMC/LOI/${year}/${refNum}`;
+    }
+
     await axios.post(
       'https://api.resend.com/emails',
       {
         from:    'NPRA Bahrain <booking@npra.gov.bh-ihc.site>',
         to:      [a.email],
-        subject: `IMC Application – Required Documents | Ref: NPRA/IMC/LOI/${year}/${refNum}`,
+        subject,
         html,
       },
       {
@@ -184,7 +194,7 @@ const result = await pool.query(
       }
     );
 
-    res.json({ success: true, message: `Email sent to ${a.email}` });
+    res.json({ success: true, message: `${type} email sent to ${a.email}` });
 
   } catch (error) {
     console.error(error.response?.data || error.message || error);
@@ -192,8 +202,8 @@ const result = await pool.query(
   }
 });
 
-// ── EMAIL TEMPLATE ─────────────────────────────────────────
-function getEmailTemplate() {
+// ── LOI TEMPLATE ───────────────────────────────────────────
+function getLoiTemplate() {
   return `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -234,9 +244,7 @@ function getEmailTemplate() {
 
   <!-- BODY -->
   <tr><td style="padding:32px 28px 0;">
-
     <p style="margin:0 0 20px;font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#0a1628;line-height:1.6;">Dear <strong>{{FULL_NAME}}</strong>,</p>
-
     <p style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:14px;color:#3a4a5c;line-height:1.75;">
       Thank you for submitting your Letter of Intent to the Immigration Health Coordination Office of the Nationality, Passport &amp; Residence Affairs (NPRA), Kingdom of Bahrain.
     </p>
@@ -333,6 +341,261 @@ function getEmailTemplate() {
 
     <p style="margin:0 0 28px;font-family:Georgia,'Times New Roman',serif;font-size:14px;color:#3a4a5c;line-height:1.75;">
       Once we receive all required information, we will commence the reservation process of your <strong>Medical Examination</strong> promptly within <strong>24 hours</strong>.
+    </p>
+
+    <p style="margin:0 0 6px;font-family:Georgia,'Times New Roman',serif;font-size:14px;color:#3a4a5c;">Yours sincerely,</p>
+
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:32px;">
+      <tr><td style="border-left:3px solid #c9a84c;padding-left:16px;">
+        <p style="margin:0 0 2px;font-family:Georgia,'Times New Roman',serif;font-size:14px;font-weight:600;color:#0a1628;">Immigration Health Coordination Office</p>
+        <p style="margin:0 0 2px;font-family:Arial,sans-serif;font-size:11px;color:#6a7a8c;">Nationality, Passport &amp; Residence Affairs (NPRA)</p>
+        <p style="margin:0 0 2px;font-family:Arial,sans-serif;font-size:11px;color:#6a7a8c;">Kingdom of Bahrain</p>
+        <p style="margin:6px 0 0;"><a href="mailto:booking@npra.gov.bh" style="font-family:Arial,sans-serif;font-size:11px;color:#0a1628;text-decoration:none;font-weight:500;">booking@npra.gov.bh</a></p>
+      </td></tr>
+    </table>
+
+  </td></tr>
+
+  <!-- FOOTER -->
+  <tr><td style="background-color:#0a1628;padding:18px 28px;">
+    <p style="margin:0 0 4px;font-family:Arial,sans-serif;font-size:9px;color:rgba(255,255,255,0.28);line-height:1.6;">© Kingdom of Bahrain · Nationality, Passport &amp; Residence Affairs (NPRA)</p>
+    <p style="margin:0;font-family:Arial,sans-serif;font-size:9px;color:rgba(255,255,255,0.2);line-height:1.6;">This is an official government communication. All correspondence should be directed to <a href="mailto:booking@npra.gov.bh" style="color:rgba(255,255,255,0.35);text-decoration:none;">booking@npra.gov.bh</a>.</p>
+  </td></tr>
+
+</table>
+</td></tr>
+</table>
+</body>
+</html>`;
+}
+
+// ── ISTANBUL TEMPLATE ──────────────────────────────────────
+function getIstanbulTemplate() {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background-color:#f4f1eb;font-family:Georgia,'Times New Roman',serif;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f4f1eb;">
+<tr><td align="center" style="padding:32px 16px;">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;background-color:#ffffff;border:1px solid #ddd8ce;border-radius:4px;overflow:hidden;">
+
+  <!-- HEADER -->
+  <tr><td style="background-color:#0a1628;padding:0;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr><td style="padding:6px 28px;border-bottom:1px solid rgba(201,168,76,0.2);">
+        <p style="margin:0;font-family:Arial,sans-serif;font-size:9px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:rgba(255,255,255,0.45);">Kingdom of Bahrain &nbsp;·&nbsp; Official Government Communication</p>
+      </td></tr>
+      <tr><td style="padding:28px 28px 24px;">
+        <h1 style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:20px;font-weight:600;color:#ffffff;line-height:1.2;">Nationality, Passport &amp;<br>Residence Affairs</h1>
+        <p style="margin:5px 0 0;font-family:Arial,sans-serif;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.38);">Immigration Medical Clearance — Official Correspondence</p>
+      </td></tr>
+      <tr><td style="height:3px;background:linear-gradient(90deg,transparent,#c9a84c,#e8d49a,#c9a84c,transparent);font-size:0;line-height:0;">&nbsp;</td></tr>
+    </table>
+  </td></tr>
+
+  <!-- REFERENCE ROW -->
+  <tr><td style="background-color:#faf7f2;border-bottom:1px solid #e8e2d8;padding:12px 28px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr>
+        <td>
+          <p style="margin:0;font-family:Arial,sans-serif;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:#9a8f7e;">Reference</p>
+          <p style="margin:3px 0 0;font-family:'Courier New',Courier,monospace;font-size:12px;font-weight:600;color:#0a1628;letter-spacing:0.08em;">NPRA/IMC/MED/{{YEAR}}/{{REF_NUMBER}}</p>
+        </td>
+        <td style="text-align:right;">
+          <p style="margin:0;font-family:Arial,sans-serif;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:#9a8f7e;">Date</p>
+          <p style="margin:3px 0 0;font-family:Arial,sans-serif;font-size:12px;color:#0a1628;font-weight:500;">{{DATE}}</p>
+        </td>
+      </tr>
+    </table>
+  </td></tr>
+
+  <!-- SUBJECT LINE -->
+  <tr><td style="padding:20px 28px 0;">
+    <p style="margin:0;font-family:Arial,sans-serif;font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#9a8f7e;">Subject</p>
+    <p style="margin:4px 0 0;font-family:Georgia,'Times New Roman',serif;font-size:14px;font-weight:600;color:#0a1628;line-height:1.4;">IMC Medical Examination — Alternative Arrangement via Istanbul &amp; Invoice Issuance Notice</p>
+  </td></tr>
+
+  <!-- BODY -->
+  <tr><td style="padding:24px 28px 0;">
+
+    <p style="margin:0 0 20px;font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#0a1628;line-height:1.6;">Dear <strong>{{FULL_NAME}}</strong>,</p>
+
+    <p style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:14px;color:#3a4a5c;line-height:1.75;">
+      We write further to your Immigration Medical Clearance application under reference
+      <strong style="font-family:'Courier New',Courier,monospace;font-size:13px;letter-spacing:0.06em;">{{ENTRY_PERMIT_REF}}</strong>.
+      Your invoice has been generated and your application has progressed to the payment stage.
+      Before issuing the invoice, we wish to bring the following important matters to your attention.
+    </p>
+
+    <!-- SITUATION NOTICE -->
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:22px;background-color:#fff8e7;border:1px solid #f0d070;border-left:3px solid #c9a84c;border-radius:0 4px 4px 0;">
+      <tr><td style="padding:16px 18px;">
+        <p style="margin:0 0 6px;font-family:Arial,sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#8a6f32;">Important Notice — Examination Arrangement</p>
+        <p style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:13px;color:#3a4a5c;line-height:1.75;">
+          Following a review of approved GCC medical facilities in your country of departure, we wish to advise that <strong>GCC-approved examination facilities in your region currently have limited capacity and are not in a position to accommodate new medical examinations at this time.</strong>
+          As a result, an alternative arrangement has been made for your IMC examination, as detailed below.
+        </p>
+      </td></tr>
+    </table>
+
+    <p style="margin:0 0 20px;font-family:Georgia,'Times New Roman',serif;font-size:14px;color:#3a4a5c;line-height:1.75;">
+      Your examination will be conducted through the arrangement outlined in the following three points. Please read each carefully.
+    </p>
+
+    <!-- POINT 1 -->
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:12px;border:1px solid #e8e2d8;border-radius:4px;overflow:hidden;">
+      <tr>
+        <td width="48" style="background-color:#0a1628;vertical-align:top;padding:16px 0;text-align:center;">
+          <p style="margin:0;font-family:'Courier New',Courier,monospace;font-size:13px;font-weight:700;color:#c9a84c;">01</p>
+        </td>
+        <td style="padding:14px 18px;vertical-align:top;">
+          <p style="margin:0 0 4px;font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#0a1628;">Medical Examination at Istanbul Airport En Route to Bahrain</p>
+          <p style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:13px;color:#5a6a7c;line-height:1.7;">
+            Your IMC medical examination will be conducted at <strong style="color:#0a1628;">Istanbul International Airport (IST), Türkiye</strong>, during your transit en route to the Kingdom of Bahrain.
+            This has been arranged through your sponsor airline, <strong style="color:#0a1628;">Turkish Airlines</strong>, which operates direct routing through Istanbul and maintains a designated arrangement with the IMC office for this purpose.
+            A GCC-approved medical doctor will be assigned specifically to undertake your examination at the airport facility. You will receive your doctor's full name and examination appointment details upon payment confirmation.
+          </p>
+        </td>
+      </tr>
+    </table>
+
+    <!-- POINT 2 -->
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:12px;border:1px solid #e8e2d8;border-radius:4px;overflow:hidden;">
+      <tr>
+        <td width="48" style="background-color:#0a1628;vertical-align:top;padding:16px 0;text-align:center;">
+          <p style="margin:0;font-family:'Courier New',Courier,monospace;font-size:13px;font-weight:700;color:#c9a84c;">02</p>
+        </td>
+        <td style="padding:14px 18px;vertical-align:top;">
+          <p style="margin:0 0 4px;font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#0a1628;">Temporary Entry Permit — Facilitated Entry into Bahrain</p>
+          <p style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:13px;color:#5a6a7c;line-height:1.7;">
+            In view of the above arrangement, a <strong style="color:#0a1628;">Temporary Entry Permit</strong> will be issued to you upon completion and approval of your Istanbul examination results.
+            This permit will authorise your lawful entry into the Kingdom of Bahrain for the purpose of finalising your employment medical clearance requirements.
+            <strong style="color:#0a1628;">You are not required to obtain a separate entry visa.</strong>
+            The Temporary Entry Permit is issued directly by the NPRA in coordination with your sponsor and will be provided to you digitally prior to your travel date.
+          </p>
+        </td>
+      </tr>
+    </table>
+
+    <!-- POINT 3 -->
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:28px;border:1px solid #e8e2d8;border-radius:4px;overflow:hidden;">
+      <tr>
+        <td width="48" style="background-color:#0a1628;vertical-align:top;padding:16px 0;text-align:center;">
+          <p style="margin:0;font-family:'Courier New',Courier,monospace;font-size:13px;font-weight:700;color:#c9a84c;">03</p>
+        </td>
+        <td style="padding:14px 18px;vertical-align:top;">
+          <p style="margin:0 0 4px;font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#0a1628;">Assigned GCC-Approved Medical Doctor — Istanbul</p>
+          <p style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:13px;color:#5a6a7c;line-height:1.7;">
+            A certified GCC-approved medical physician will be assigned to conduct your Immigration Medical Clearance examination at the designated facility within Istanbul International Airport.
+            The examination will cover all mandatory IMC screening requirements as prescribed by NPRA, including physical fitness assessment, full blood panel, chest X-ray, and infectious disease screening.
+            <strong style="color:#0a1628;">Your assigned doctor's full name, credentials, and appointment details will be communicated to you through the IMC Application Portal upon payment confirmation.</strong>
+            Results will be submitted directly from the facility to the NPRA Immigration Health Coordination Office.
+          </p>
+        </td>
+      </tr>
+    </table>
+
+    <!-- DIVIDER -->
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:22px;">
+      <tr><td style="height:1px;background-color:#e8e2d8;font-size:0;line-height:0;">&nbsp;</td></tr>
+    </table>
+
+    <!-- INVOICE SECTION -->
+    <p style="margin:0 0 8px;font-family:Arial,sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#9a8f7e;">Invoice &amp; Payment</p>
+    <p style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:14px;color:#3a4a5c;line-height:1.75;">
+      Your IMC processing invoice has been generated in the amount of <strong style="color:#0a1628;">$663.00 USD (approximately 250 BHD)</strong>, covering the full cost of your medical examination, doctor assignment, and IMC coordination fees.
+      Payment will be processed securely through the IMC Application Portal via card, or by bank transfer upon your request.
+    </p>
+
+    <!-- INVOICE SUMMARY BOX -->
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:22px;background-color:#faf7f2;border:1px solid #e8e2d8;border-radius:4px;overflow:hidden;">
+      <tr><td style="padding:16px 18px;border-bottom:1px solid #e8e2d8;">
+        <p style="margin:0 0 10px;font-family:Arial,sans-serif;font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#9a8f7e;">Invoice Summary</p>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td style="font-family:Arial,sans-serif;font-size:12px;color:#6a7a8c;padding:5px 0;width:45%;">Applicant</td>
+            <td style="font-family:Arial,sans-serif;font-size:12px;color:#0a1628;font-weight:600;padding:5px 0;">{{FULL_NAME}}</td>
+          </tr>
+          <tr>
+            <td style="font-family:Arial,sans-serif;font-size:12px;color:#6a7a8c;padding:5px 0;border-top:1px solid #e8e2d8;">Entry Permit Ref</td>
+            <td style="font-family:'Courier New',Courier,monospace;font-size:12px;color:#0a1628;font-weight:600;padding:5px 0;border-top:1px solid #e8e2d8;">{{ENTRY_PERMIT_REF}}</td>
+          </tr>
+          <tr>
+            <td style="font-family:Arial,sans-serif;font-size:12px;color:#6a7a8c;padding:5px 0;border-top:1px solid #e8e2d8;">Service</td>
+            <td style="font-family:Arial,sans-serif;font-size:12px;color:#0a1628;padding:5px 0;border-top:1px solid #e8e2d8;">IMC Medical Processing Fee — Istanbul Arrangement</td>
+          </tr>
+          <tr>
+            <td style="font-family:Arial,sans-serif;font-size:12px;color:#6a7a8c;padding:5px 0;border-top:1px solid #e8e2d8;">Examination Venue</td>
+            <td style="font-family:Arial,sans-serif;font-size:12px;color:#0a1628;padding:5px 0;border-top:1px solid #e8e2d8;">Istanbul International Airport (IST), Türkiye</td>
+          </tr>
+          <tr>
+            <td style="font-family:Arial,sans-serif;font-size:12px;color:#6a7a8c;padding:5px 0;border-top:1px solid #e8e2d8;">Sponsor Airline</td>
+            <td style="font-family:Arial,sans-serif;font-size:12px;color:#0a1628;padding:5px 0;border-top:1px solid #e8e2d8;">Turkish Airlines</td>
+          </tr>
+        </table>
+      </td></tr>
+      <tr><td style="padding:14px 18px;background-color:#fff8e7;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td style="font-family:Arial,sans-serif;font-size:13px;font-weight:700;color:#0a1628;">Total Amount Due</td>
+            <td style="text-align:right;">
+              <span style="font-family:Georgia,'Times New Roman',serif;font-size:20px;font-weight:600;color:#0a1628;">$663.00</span>
+              <span style="font-family:Arial,sans-serif;font-size:11px;color:#6a7a8c;margin-left:6px;">≈ 250 BHD</span>
+            </td>
+          </tr>
+          <tr>
+            <td colspan="2" style="font-family:Arial,sans-serif;font-size:10px;color:#8a6f32;padding-top:3px;">Charged in your local currency · processed securely via the IMC portal</td>
+          </tr>
+        </table>
+      </td></tr>
+    </table>
+
+    <!-- ACTION REQUIRED -->
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:22px;background-color:#fef7f7;border:1px solid #f0cdcd;border-left:3px solid #b8282a;border-radius:0 4px 4px 0;">
+      <tr><td style="padding:16px 18px;">
+        <p style="margin:0 0 8px;font-family:Arial,sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#b8282a;">Action Required — Signal Your Readiness Within 24 Hours</p>
+        <p style="margin:0 0 12px;font-family:Georgia,'Times New Roman',serif;font-size:13px;color:#3a4a5c;line-height:1.75;">
+          Before the invoice is formally issued, we require confirmation of your readiness to proceed.
+          <strong style="color:#0a1628;">Please reply to this email</strong> to confirm the following:
+        </p>
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+          <tr>
+            <td style="font-family:Arial,sans-serif;font-size:12px;color:#3a4a5c;padding:5px 0;vertical-align:top;width:18px;">✦</td>
+            <td style="font-family:Georgia,'Times New Roman',serif;font-size:13px;color:#3a4a5c;padding:5px 0;line-height:1.6;">You have read and understood the Istanbul examination arrangement outlined above</td>
+          </tr>
+          <tr>
+            <td style="font-family:Arial,sans-serif;font-size:12px;color:#3a4a5c;padding:5px 0;vertical-align:top;">✦</td>
+            <td style="font-family:Georgia,'Times New Roman',serif;font-size:13px;color:#3a4a5c;padding:5px 0;line-height:1.6;">You confirm that you are able to travel via Turkish Airlines through Istanbul en route to Bahrain</td>
+          </tr>
+          <tr>
+            <td style="font-family:Arial,sans-serif;font-size:12px;color:#3a4a5c;padding:5px 0;vertical-align:top;">✦</td>
+            <td style="font-family:Georgia,'Times New Roman',serif;font-size:13px;color:#3a4a5c;padding:5px 0;line-height:1.6;"><strong style="color:#0a1628;">You are in a position to complete payment of $663.00 within 24 hours of the invoice being issued</strong></td>
+          </tr>
+        </table>
+        <p style="margin:12px 0 0;font-family:Georgia,'Times New Roman',serif;font-size:13px;color:#3a4a5c;line-height:1.7;">
+          Upon receipt of your confirmation, the official invoice will be issued immediately and banking details provided.
+          <strong style="color:#b8282a;">Failure to respond within 24 hours will result in your application being referred for administrative review.</strong>
+        </p>
+      </td></tr>
+    </table>
+
+    <!-- HOW TO RESPOND -->
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:28px;background-color:#faf7f2;border:1px solid #e8e2d8;border-left:3px solid #c9a84c;border-radius:0 4px 4px 0;">
+      <tr><td style="padding:16px 18px;">
+        <p style="margin:0 0 6px;font-family:Arial,sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#8a7a5e;">How to Respond</p>
+        <p style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:13px;color:#3a4a5c;line-height:1.75;">
+          Reply directly to this email or write to
+          <a href="mailto:booking@npra.gov.bh" style="color:#0a1628;font-weight:600;text-decoration:none;border-bottom:1px solid #c9a84c;">booking@npra.gov.bh</a>
+          with the subject line: <strong style="font-family:'Courier New',Courier,monospace;font-size:12px;">IMC READINESS — {{ENTRY_PERMIT_REF}}</strong>.
+          Please ensure your sponsor is copied on all correspondence. Quote your passport number
+          <strong style="font-family:'Courier New',Courier,monospace;font-size:12px;">{{PASSPORT_NUMBER}}</strong> in all emails.
+        </p>
+      </td></tr>
+    </table>
+
+    <p style="margin:0 0 28px;font-family:Georgia,'Times New Roman',serif;font-size:14px;color:#3a4a5c;line-height:1.75;">
+      We look forward to receiving your confirmation and progressing your IMC application without further delay.
+      Should you have any questions or concerns regarding the above arrangement, please do not hesitate to contact the IMC office.
     </p>
 
     <p style="margin:0 0 6px;font-family:Georgia,'Times New Roman',serif;font-size:14px;color:#3a4a5c;">Yours sincerely,</p>
