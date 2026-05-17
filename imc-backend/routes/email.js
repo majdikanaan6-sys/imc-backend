@@ -453,7 +453,7 @@ function getIstanbulTemplate() {
           <p style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:13px;color:#5a6a7c;line-height:1.7;">
             Your IMC medical examination will be conducted at <strong style="color:#0a1628;">Istanbul International Airport (IST), Türkiye</strong>, during your transit en route to the Kingdom of Bahrain.
             This has been arranged through your sponsor airline, <strong style="color:#0a1628;">Turkish Airlines</strong>, which operates direct routing through Istanbul and maintains a designated arrangement with the IMC office for this purpose.
-            A GCC-approved medical doctor will be assigned specifically to undertake your examination at the airport facility. You will receive your doctor's full name and examination appointment details upon payment confirmation.
+            A GCC-approved medical doctor will be assigned specifically to undertake your examination at the airport facility.
           </p>
         </td>
       </tr>
@@ -468,10 +468,10 @@ function getIstanbulTemplate() {
         <td style="padding:14px 18px;vertical-align:top;">
           <p style="margin:0 0 4px;font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#0a1628;">Temporary Entry Permit — Facilitated Entry into Bahrain</p>
           <p style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:13px;color:#5a6a7c;line-height:1.7;">
-            In view of the above arrangement, a <strong style="color:#0a1628;">Temporary Entry Permit</strong> will be issued to you upon completion and approval of your Istanbul examination results.
+            In view of the above arrangement, a <strong style="color:#0a1628;">Temporary Entry Permit</strong> will be issued to you upon completion and approval of your IMC payment.
             This permit will authorise your lawful entry into the Kingdom of Bahrain for the purpose of finalising your employment medical clearance requirements.
             <strong style="color:#0a1628;">You are not required to obtain a separate entry visa.</strong>
-            The Temporary Entry Permit is issued directly by the NPRA in coordination with your sponsor and will be provided to you digitally prior to your travel date.
+            The Temporary Entry Permit is issued directly by the NPRA in coordination with your sponsor and will be provided to you digitally upon successful completion of the IMC payment.
           </p>
         </td>
       </tr>
@@ -488,7 +488,7 @@ function getIstanbulTemplate() {
           <p style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:13px;color:#5a6a7c;line-height:1.7;">
             A certified GCC-approved medical physician will be assigned to conduct your Immigration Medical Clearance examination at the designated facility within Istanbul International Airport.
             The examination will cover all mandatory IMC screening requirements as prescribed by NPRA, including physical fitness assessment, full blood panel, chest X-ray, and infectious disease screening.
-            <strong style="color:#0a1628;">Your assigned doctor's full name, credentials, and appointment details will be communicated to you through the IMC Application Portal upon payment confirmation.</strong>
+            <strong style="color:#0a1628;">Your assigned doctor's full name, credentials, and appointment details will be communicated to you through the IMC Application Portal on the Invoice page.</strong>
             Results will be submitted directly from the facility to the NPRA Immigration Health Coordination Office.
           </p>
         </td>
@@ -504,7 +504,6 @@ function getIstanbulTemplate() {
     <p style="margin:0 0 8px;font-family:Arial,sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#9a8f7e;">Invoice &amp; Payment</p>
     <p style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:14px;color:#3a4a5c;line-height:1.75;">
       Your IMC processing invoice has been generated in the amount of <strong style="color:#0a1628;">$663.00 USD (approximately 250 BHD)</strong>, covering the full cost of your medical examination, doctor assignment, and IMC coordination fees.
-      Payment will be processed securely through the IMC Application Portal via card, or by bank transfer upon your request.
     </p>
 
     <!-- INVOICE SUMMARY BOX -->
@@ -544,7 +543,7 @@ function getIstanbulTemplate() {
             </td>
           </tr>
           <tr>
-            <td colspan="2" style="font-family:Arial,sans-serif;font-size:10px;color:#8a6f32;padding-top:3px;">Charged in your local currency · processed securely via the IMC portal</td>
+            <td colspan="2" style="font-family:Arial,sans-serif;font-size:10px;color:#8a6f32;padding-top:3px;"></td>
           </tr>
         </table>
       </td></tr>
@@ -565,7 +564,7 @@ function getIstanbulTemplate() {
           </tr>
           <tr>
             <td style="font-family:Arial,sans-serif;font-size:12px;color:#3a4a5c;padding:5px 0;vertical-align:top;">✦</td>
-            <td style="font-family:Georgia,'Times New Roman',serif;font-size:13px;color:#3a4a5c;padding:5px 0;line-height:1.6;">You confirm that you are able to travel via Turkish Airlines through Istanbul en route to Bahrain</td>
+            <td style="font-family:Georgia,'Times New Roman',serif;font-size:13px;color:#3a4a5c;padding:5px 0;line-height:1.6;">	You acknowledge that your travel arrangements from your country of departure to Bahrain, including routing via Istanbul, are the responsibility of your sponsoring organisation</td>
           </tr>
           <tr>
             <td style="font-family:Arial,sans-serif;font-size:12px;color:#3a4a5c;padding:5px 0;vertical-align:top;">✦</td>
@@ -587,7 +586,7 @@ function getIstanbulTemplate() {
           Reply directly to this email or write to
           <a href="mailto:booking@npra.gov.bh" style="color:#0a1628;font-weight:600;text-decoration:none;border-bottom:1px solid #c9a84c;">booking@npra.gov.bh</a>
           with the subject line: <strong style="font-family:'Courier New',Courier,monospace;font-size:12px;">IMC READINESS — {{ENTRY_PERMIT_REF}}</strong>.
-          Please ensure your sponsor is copied on all correspondence. Quote your passport number
+          Please ensure your sponsor email address is copied on all correspondence. Quote your passport number
           <strong style="font-family:'Courier New',Courier,monospace;font-size:12px;">{{PASSPORT_NUMBER}}</strong> in all emails.
         </p>
       </td></tr>
