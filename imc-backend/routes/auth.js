@@ -609,7 +609,7 @@ router.post('/admin/issue-invoice', async (req, res) => {
   }
 });
 
-// ── ADMIN: UPDATE MEDICAL DETAILS ─────────────────────────────────────────────
+// ── ADMIN: UPDATE MEDICAL DETAILSS ─────────────────────────────────────────────
 router.post("/admin/update-medical", async (req, res) => {
   try {
     const {
