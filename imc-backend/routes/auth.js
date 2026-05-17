@@ -563,6 +563,52 @@ router.post("/admin/update-status", async (req, res) => {
   }
 });
 
+// ── ADMIN: ISSUE MANUAL INVOICE ────────────────────────────────────────────
+router.post('/admin/issue-invoice', async (req, res) => {
+  try {
+    const { entry_permit_ref } = req.body;
+
+    // Only allow at payment_pending stage
+    const current = await pool.query(
+      'SELECT imc_status FROM applicants WHERE entry_permit_ref = $1',
+      [entry_permit_ref]
+    );
+
+    if (current.rows.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Applicant not found' 
+      });
+    }
+
+    if (current.rows[0].imc_status !== 'payment_pending') {
+      return res.status(400).json({
+        success: false,
+        message: `Invoice can only be issued at payment_pending stage. Current: ${current.rows[0].imc_status}`
+      });
+    }
+
+    const result = await pool.query(
+      `UPDATE applicants
+       SET invoice_issued = true,
+           invoice_requested_at = NOW()
+       WHERE entry_permit_ref = $1
+       RETURNING *`,
+      [entry_permit_ref]
+    );
+
+    res.json({ 
+      success: true, 
+      message: 'Invoice issued successfully. Applicant can now access and download their invoice from the portal.',
+      applicant: result.rows[0] 
+    });
+
+  } catch (error) {
+    console.error('Issue invoice error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // ── ADMIN: UPDATE MEDICAL DETAILS ─────────────────────────────────────────────
 router.post("/admin/update-medical", async (req, res) => {
   try {
