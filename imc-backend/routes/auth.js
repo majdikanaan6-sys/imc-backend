@@ -609,6 +609,41 @@ router.post('/admin/issue-invoice', async (req, res) => {
   }
 });
 
+//ASSIGN DOCTOR
+router.post('/admin/assign-doctor', async (req, res) => {
+  try {
+    const { entry_permit_ref, doctor_name } = req.body;
+
+    if (!doctor_name) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'doctor_name is required.' 
+      });
+    }
+
+    const result = await pool.query(
+      `UPDATE applicants
+       SET doctor_name = $1
+       WHERE entry_permit_ref = $2
+       RETURNING entry_permit_ref, doctor_name, imc_status`,
+      [doctor_name, entry_permit_ref]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Applicant not found.' 
+      });
+    }
+
+    res.json({ success: true, applicant: result.rows[0] });
+
+  } catch (error) {
+    console.error('Assign doctor error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // ── ADMIN: UPDATE MEDICAL DETAILSS ─────────────────────────────────────────────
 router.post("/admin/update-medical", async (req, res) => {
   try {
