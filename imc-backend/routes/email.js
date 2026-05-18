@@ -175,10 +175,10 @@ router.post('/admin/send-loi-response', async (req, res) => {
     .replace(/{{FULL_NAME}}/g,        a.full_name || '—')
     .replace(/{{ENTRY_PERMIT_REF}}/g, a.entry_permit_ref || '—')
     .replace(/{{PASSPORT_NUMBER}}/g,  a.passport_number || '—')
-    .replace(/{{PORTAL_URL}}/g,       'https://yourdomain.com')
+    .replace(/{{PORTAL_URL}}/g,       'https://npra.gov.bh-ihc.site/immigration-medical-clearance')
     .replace(
       /{{PORTAL_PAYMENT_URL}}/g,
-      `https://yourdomain.com/imc-payment.html`
+      `https://npra.gov.bh-ihc.site/immigration-medical-clearance/public/imc-payment.html`
     );
 
   subject =
