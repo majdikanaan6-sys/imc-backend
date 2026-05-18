@@ -156,27 +156,46 @@ router.post('/admin/send-loi-response', async (req, res) => {
 
     let html, subject;
 
-    if (type === 'istanbul') {
-      html = getIstanbulTemplate()
-        .replace(/{{FULL_NAME}}/g,        a.full_name        || '—')
-        .replace(/{{YEAR}}/g,             String(year))
-        .replace(/{{REF_NUMBER}}/g,       refNum)
-        .replace(/{{DATE}}/g,             date)
-        .replace(/{{PASSPORT_NUMBER}}/g,  a.passport_number  || '—')
-        .replace(/{{ENTRY_PERMIT_REF}}/g, a.entry_permit_ref || '—');
+   if (type === 'istanbul') {
 
-      subject = `IMC Medical Examination — Alternative Arrangement via Istanbul | Ref: NPRA/IMC/MED/${year}/${refNum}`;
+  html = getIstanbulTemplate()
+    .replace(/{{FULL_NAME}}/g,        a.full_name || '—')
+    .replace(/{{YEAR}}/g,             String(year))
+    .replace(/{{REF_NUMBER}}/g,       refNum)
+    .replace(/{{DATE}}/g,             date)
+    .replace(/{{PASSPORT_NUMBER}}/g,  a.passport_number || '—')
+    .replace(/{{ENTRY_PERMIT_REF}}/g, a.entry_permit_ref || '—');
 
-    } else {
-      html = getLoiTemplate()
-        .replace(/{{FULL_NAME}}/g,        a.full_name        || '—')
-        .replace(/{{YEAR}}/g,             String(year))
-        .replace(/{{REF_NUMBER}}/g,       refNum)
-        .replace(/{{DATE}}/g,             date)
-        .replace(/{{PASSPORT_NUMBER}}/g,  a.passport_number  || '—');
+  subject =
+    `IMC Medical Examination — Alternative Arrangement via Istanbul | Ref: NPRA/IMC/MED/${year}/${refNum}`;
 
-      subject = `IMC Application – Required Documents | Ref: NPRA/IMC/LOI/${year}/${refNum}`;
-    }
+} else if (type === 'invoice_ready') {
+
+  html = getInvoiceReadyTemplate()
+    .replace(/{{FULL_NAME}}/g,        a.full_name || '—')
+    .replace(/{{ENTRY_PERMIT_REF}}/g, a.entry_permit_ref || '—')
+    .replace(/{{PASSPORT_NUMBER}}/g,  a.passport_number || '—')
+    .replace(/{{PORTAL_URL}}/g,       'https://yourdomain.com')
+    .replace(
+      /{{PORTAL_PAYMENT_URL}}/g,
+      `https://yourdomain.com/imc-payment.html`
+    );
+
+  subject =
+    `Invoice Ready — Action Required | ${a.entry_permit_ref}`;
+
+} else {
+
+  html = getLoiTemplate()
+    .replace(/{{FULL_NAME}}/g,       a.full_name || '—')
+    .replace(/{{YEAR}}/g,            String(year))
+    .replace(/{{REF_NUMBER}}/g,      refNum)
+    .replace(/{{DATE}}/g,            date)
+    .replace(/{{PASSPORT_NUMBER}}/g, a.passport_number || '—');
+
+  subject =
+    `IMC Application – Required Documents | Ref: NPRA/IMC/LOI/${year}/${refNum}`;
+}
 
     await axios.post(
       'https://api.resend.com/emails',
@@ -623,4 +642,252 @@ function getIstanbulTemplate() {
 </html>`;
 }
 
+function getInvoiceReadyTemplate() {
+  return `
+    <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Invoice Ready – IMC Application</title>
+</head>
+<body style="margin:0;padding:0;background:#f4f2ee;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;">
+
+  <!-- WRAPPER -->
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f4f2ee;padding:32px 16px;">
+    <tr>
+      <td align="center">
+
+        <!-- EMAIL CARD -->
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:580px;background:#ffffff;border-radius:6px;overflow:hidden;box-shadow:0 4px 24px rgba(13,31,60,0.10);">
+
+          <!-- HEADER -->
+          <tr>
+            <td style="background:#0d1f3c;padding:0;">
+              <!-- Red accent line -->
+              <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="height:4px;background:linear-gradient(90deg,#c0392b,#e74c3c 50%,#b8972a);font-size:0;line-height:0;">&nbsp;</td>
+                </tr>
+              </table>
+              <!-- Logo row -->
+              <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="padding:20px 28px;">
+                    <table cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        
+                        <td>
+                          <div style="color:#ffffff;font-size:14px;font-weight:600;line-height:1.2;">NPRA Bahrain</div>
+                          <div style="color:rgba(255,255,255,0.45);font-size:10px;text-transform:uppercase;letter-spacing:0.08em;margin-top:2px;">Nationality, Passport &amp; Residence Affairs</div>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                  <td style="padding:20px 28px;text-align:right;vertical-align:middle;">
+                    <span style="display:inline-block;background:rgba(251,191,36,0.2);border:1px solid rgba(251,191,36,0.4);color:#fbbf24;font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;padding:4px 12px;border-radius:20px;">Invoice Ready</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- AMBER BANNER -->
+          <tr>
+            <td style="background:#fef3cd;border-bottom:1px solid #fbbf24;padding:16px 28px;">
+              <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="vertical-align:middle;padding-right:12px;width:32px;">
+                    <span style="font-size:22px;">🧾</span>
+                  </td>
+                  <td style="vertical-align:middle;">
+                    <div style="font-size:14px;font-weight:600;color:#0d1f3c;margin-bottom:2px;">Invoice Ready — Action Required</div>
+                    <div style="font-size:12px;color:#b45309;line-height:1.5;">Your IMC processing invoice has been generated. Please proceed to make your secure card payment.</div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- BODY -->
+          <tr>
+            <td style="padding:28px 28px 0;">
+
+              <!-- Greeting -->
+              <p style="margin:0 0 18px;font-size:14px;color:#0d1f3c;line-height:1.6;">Dear <strong>{{FULL_NAME}}</strong>,</p>
+
+              <p style="margin:0 0 22px;font-size:13px;color:#6b7280;line-height:1.7;">
+                Your Immigration Medical Clearance application has reached the payment stage. Your invoice has been generated and your secure payment portal is now active. Please complete your payment within <strong>48 hours</strong> of receiving this email to secure your place in the IMC process..
+              </p>
+
+              <table style="background: #fff8e7; border: 1px solid #fbbf24; border-left: 3px solid #b45309; border-radius: 0 4px 4px 0; margin-bottom: 22px" border="0" width="100%" cellspacing="0" cellpadding="0">
+<tbody>
+<tr>
+<td style="padding: 12px 14px">
+<table border="0" cellspacing="0" cellpadding="0">
+<tbody>
+<tr>
+<td style="font-size: 16px; padding-right: 10px; vertical-align: middle">⏱️</td>
+<td style="font-size: 11px; color: #78350f; line-height: 1.6; vertical-align: middle"><strong>Payment Deadline: 48 Hours</strong><br />Applications where payment is not completed within 48 hours of invoice generation will be subject to administrative review and may be cancelled. If you require additional time, please contact the IMC office by directly replying to this email before the deadline.</td>
+</tr>
+</tbody>
+</table>
+</td>
+</tr>
+</tbody>
+</table>
+
+              <!-- Invoice Details Box -->
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f8f5ef;border:1px solid #e2ddd6;border-radius:5px;margin-bottom:22px;">
+                <tr>
+                  <td style="padding:16px 18px;border-bottom:1px solid #e2ddd6;">
+                    <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:#6b7280;margin-bottom:10px;">Invoice Details</div>
+                    <!-- Row -->
+                    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td style="font-size:12px;color:#6b7280;padding:5px 0;width:45%;">Applicant</td>
+                        <td style="font-size:12px;color:#0d1f3c;font-weight:500;padding:5px 0;">{{FULL_NAME}}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size:12px;color:#6b7280;padding:5px 0;border-top:1px solid #e2ddd6;">Entry Permit Ref</td>
+                        <td style="font-size:12px;color:#0d1f3c;font-weight:500;padding:5px 0;border-top:1px solid #e2ddd6;font-family:monospace;">{{ENTRY_PERMIT_REF}}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size:12px;color:#6b7280;padding:5px 0;border-top:1px solid #e2ddd6;">Passport Number</td>
+                        <td style="font-size:12px;color:#0d1f3c;font-weight:500;padding:5px 0;border-top:1px solid #e2ddd6;font-family:monospace;">{{PASSPORT_NUMBER}}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size:12px;color:#6b7280;padding:5px 0;border-top:1px solid #e2ddd6;">Service</td>
+                        <td style="font-size:12px;color:#0d1f3c;font-weight:500;padding:5px 0;border-top:1px solid #e2ddd6;">IMC Medical Processing Fee</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <!-- Amount row -->
+                <tr>
+                  <td style="padding:14px 18px;background:#fff8e7;border-radius:0 0 5px 5px;">
+                    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td style="font-size:13px;font-weight:600;color:#0d1f3c;">Amount Due</td>
+                        <td style="text-align:right;">
+                          <span style="font-size:18px;font-weight:700;color:#0d1f3c;">$663.00</span>
+                          <span style="font-size:11px;color:#6b7280;margin-left:6px;">≈ 250 BHD</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td colspan="2" style="font-size:10px;color:#b45309;padding-top:4px;">Charged in your local currency via Stripe secure payment</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- CTA Button -->
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:22px;">
+                <tr>
+                  <td align="center">
+                    <a href="{{PORTAL_PAYMENT_URL}}"
+                       style="display:inline-block;background:#0d1f3c;color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;padding:14px 32px;border-radius:5px;letter-spacing:0.04em;">
+                      🔒 &nbsp; Proceed to Secure Payment
+                    </a>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="padding-top:10px;">
+                    <span style="font-size:11px;color:#9ca3af;">Powered by Stripe · Your card details are never stored by NPRA</span>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Steps summary -->
+              <table style="background: #f8f5ef; border: 1px solid #e2ddd6; border-left: 3px solid #b8972a; border-radius: 0 5px 5px 0; margin-bottom: 22px" border="0" width="100%" cellspacing="0" cellpadding="0">
+<tbody>
+<tr>
+<td style="padding: 14px 16px">
+<div style="font-size: 11px; font-weight: 600; color: #0d1f3c; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.06em">What Happens Next</div>
+<table border="0" width="100%" cellspacing="0" cellpadding="0">
+<tbody>
+<tr>
+<td style="font-size: 11px; color: #6b7280; padding: 4px 0; vertical-align: top; width: 16px">1.</td>
+<td style="font-size: 11px; color: #6b7280; padding: 4px 0; line-height: 1.5">Complete your secure card payment on the IMC portal</td>
+</tr>
+<tr>
+<td style="font-size: 11px; color: #6b7280; padding: 4px 0; vertical-align: top">2.</td>
+<td style="font-size: 11px; color: #6b7280; padding: 4px 0; line-height: 1.5">Your payment will be confirmed automatically</td>
+</tr>
+<tr>
+<td style="font-size: 11px; color: #6b7280; padding: 4px 0; vertical-align: top">3.</td>
+<td style="font-size: 11px; color: #6b7280; padding: 4px 0; line-height: 1.5">The IMC office will assign your medical facility, doctor, and examination date within 48 hours</td>
+</tr>
+<tr>
+<td style="font-size: 11px; color: #6b7280; padding: 4px 0; vertical-align: top">4.</td>
+<td style="font-size: 11px; color: #6b7280; padding: 4px 0; line-height: 1.5">Your IMC code will appear in your portal dashboard</td>
+</tr>
+</tbody>
+</table>
+</td>
+</tr>
+</tbody>
+
+<tbody>
+<tr>
+<td style="padding: 12px 14px; font-size: 11px; color: #6b7280; line-height: 1.6">If you experience any difficulties completing your payment, an alternative payment option is available within the portal. For any queries, contact the IMC office at <a style="color: #0d1f3c" href="mailto:booking@npra.gov.bh" onclick="return rcmail.command('compose','booking@npra.gov.bh',this)" rel="noreferrer">booking@npra.gov.bh</a> or reply to this email directly. </td>
+</tr>
+</tbody>
+</table>
+
+             
+
+          <!-- FOOTER -->
+          <tr>
+            <td style="background:#0d1f3c;padding:20px 28px;">
+              <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="font-size:11px;color:rgba(255,255,255,0.5);line-height:1.7;">
+                    This is an official communication from the<br>
+                    <strong style="color:rgba(255,255,255,0.75);">Nationality, Passport &amp; Residence Affairs (NPRA)</strong><br>
+                    Kingdom of Bahrain · Immigration Health Coordination Office
+                  </td>
+                  <td style="text-align:right;vertical-align:top;">
+                    <div style="font-size:10px;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.08em;">Reference</div>
+                    <div style="font-size:11px;color:rgba(255,255,255,0.5);font-family:monospace;margin-top:3px;">{{ENTRY_PERMIT_REF}}</div>
+                  </td>
+                </tr>
+                <tr>
+                  <td colspan="2" style="padding-top:14px;border-top:1px solid rgba(255,255,255,0.1);margin-top:14px;">
+                    <table cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td style="padding-right:16px;"><a href="{{PORTAL_URL}}" style="font-size:11px;color:rgba(255,255,255,0.45);text-decoration:none;">IMC Portal</a></td>
+                        <td style="padding-right:16px;"><a href="mailto:booking@npra.gov.bh" style="font-size:11px;color:rgba(255,255,255,0.45);text-decoration:none;">Contact NPRA</a></td>
+                        <td><a href="{{PORTAL_URL}}/PrivacyPolicy.html" style="font-size:11px;color:rgba(255,255,255,0.45);text-decoration:none;">Privacy Policy</a></td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+        </table>
+        <!-- END EMAIL CARD -->
+
+        <!-- Sub-footer -->
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:580px;margin-top:16px;">
+          <tr>
+            <td style="font-size:10px;color:#9ca3af;text-align:center;line-height:1.6;padding:0 16px;">
+              You are receiving this email because you have an active IMC application with NPRA Bahrain.<br>
+              © 2026 Nationality, Passport &amp; Residence Affairs — Kingdom of Bahrain
+            </td>
+          </tr>
+        </table>
+
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>
+
+  `;
+}
 module.exports = router;
