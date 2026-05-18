@@ -221,7 +221,7 @@ router.post("/imc/loi", async (req, res) => {
     );
 
     await axios.post(
-  "https://api.brevo.com/v3/smtp/email",
+  "https://api.resend.com/v3/smtp/email",
   {
     sender: {
       name: "NPRA Bahrain",
@@ -372,7 +372,7 @@ router.post("/imc/loi", async (req, res) => {
   {
     headers: {
       "accept": "application/json",
-      "api-key": process.env.BREVO_API_KEY,
+      "api-key": process.env.RESEND_API_KEY,
       "content-type": "application/json"
     }
   }
