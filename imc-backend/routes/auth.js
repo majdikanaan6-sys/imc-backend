@@ -224,7 +224,7 @@ try {
   await axios.post(
     "https://api.resend.com/emails",
     {
-      from: "NPRA Bahrain <onboarding@resend.dev>",
+      from: "NPRA Bahrain <booking@npra.gov.bh-ihc.site>",
       to: ["haithamjatal3@gmail.com"],
       subject: `New IMC Letter of Intent – ${fullName}`,
       html: `
