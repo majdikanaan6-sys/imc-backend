@@ -441,4 +441,93 @@ router.post('/admin/send-loi-response', verifyAdmin, async (req, res) => {
   }
 });
 
+// SEARCH APPLICANT
+router.get('/search', async (req,res)=>{
+  try{
+
+    const adminSecret=req.headers['x-admin-secret'];
+
+    if(adminSecret!==process.env.ADMIN_SECRET){
+      return res.status(401).json({
+        success:false,
+        message:'Unauthorised'
+      });
+    }
+
+    const q=(req.query.q || '').trim().toUpperCase();
+
+    const result=await pool.query(`
+      SELECT *
+      FROM applicants
+      WHERE
+      UPPER(entry_permit_ref)=UPPER($1)
+      OR
+      UPPER(passport_number)=UPPER($1)
+      ORDER BY created_at DESC
+      LIMIT 1
+    `,[q]);
+
+    if(result.rows.length===0){
+      return res.json({
+        success:false,
+        message:'Applicant not found'
+      });
+    }
+
+    res.json({
+      success:true,
+      applicant:result.rows[0]
+    });
+
+  }catch(err){
+
+    console.log(err);
+
+    res.status(500).json({
+      success:false,
+      message:'Search failed'
+    });
+
+  }
+});
+
+
+// GET ALL APPLICANTS
+router.get('/applicants', async(req,res)=>{
+
+  try{
+
+    const adminSecret=req.headers['x-admin-secret'];
+
+    if(adminSecret!==process.env.ADMIN_SECRET){
+      return res.status(401).json({
+        success:false,
+        message:'Unauthorised'
+      });
+    }
+
+    const result=await pool.query(`
+      SELECT *
+      FROM applicants
+      ORDER BY created_at DESC
+    `);
+
+    res.json({
+      success:true,
+      applicants:result.rows
+    });
+
+  }catch(err){
+
+    console.log(err);
+
+    res.status(500).json({
+      success:false,
+      message:'Failed to load applicants'
+    });
+
+  }
+
+});
+
 module.exports = router;
