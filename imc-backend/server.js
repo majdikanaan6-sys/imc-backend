@@ -6,7 +6,7 @@ const cors = require("cors");
 const authRoutes = require("./routes/auth");
 const emailRoutes = require("./routes/email");
 const paymentRoutes = require("./routes/payment");
-const adminRoutes = require('./routes/admin');
+const adminRoutes = require("./routes/admin");
 
 const app = express();
 
