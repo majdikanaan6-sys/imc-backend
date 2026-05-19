@@ -275,56 +275,108 @@ res.status(201).json({
 // ── STAGE 3: APPLICANT CONFIRMS AIRLINE ──────────────────────────────────────
 router.post("/imc/confirm", authMiddleware, async (req, res) => {
   try {
+
     const { sponsorAirline } = req.body;
 
     if (!sponsorAirline) {
-      return res.status(400).json({ success: false, message: "Sponsor airline is required." });
+      return res.status(400).json({
+        success: false,
+        message: "Sponsor airline is required."
+      });
     }
 
-    // Get passport number from entry_permits via JWT id
+    // Get permit info from JWT user
     const permitResult = await pool.query(
-      "SELECT passport_number FROM entry_permits WHERE id = $1",
+      `
+      SELECT
+        id,
+        passport_number
+      FROM entry_permits
+      WHERE id = $1
+      `,
       [req.applicant.applicantId]
     );
 
     if (permitResult.rows.length === 0) {
-      return res.status(404).json({ success: false, message: "Permit not found" });
-    }
-
-    const { passport_number } = permitResult.rows[0];
-
-    // Check current status
-    const current = await pool.query(
-      "SELECT imc_status FROM applicants WHERE passport_number = $1",
-      [passport_number]
-    );
-
-    if (!current.rows[0] || current.rows[0].imc_status !== "entry_permit_verified") {
-      return res.status(400).json({
+      return res.status(404).json({
         success: false,
-        message: `Action not permitted at current stage: ${current.rows[0]?.imc_status}`,
+        message: "Permit not found"
       });
     }
 
+    const {
+      passport_number
+    } = permitResult.rows[0];
+
+    // Validate applicant stage
+    const current = await pool.query(
+      `
+      SELECT imc_status
+      FROM applicants
+      WHERE passport_number = $1
+      `,
+      [passport_number]
+    );
+
+    if (
+      !current.rows[0] ||
+      current.rows[0].imc_status !== "entry_permit_verified"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          `Action not permitted at current stage: ${current.rows[0]?.imc_status}`
+      });
+    }
+
+    // UPDATE ENTRY_PERMITS TABLE
+    await pool.query(
+      `
+      UPDATE entry_permits
+      SET sponsor_airline = $1
+      WHERE passport_number = $2
+      `,
+      [
+        sponsorAirline,
+        passport_number
+      ]
+    );
+
+    // UPDATE APPLICANTS TABLE
     const result = await pool.query(
-      `UPDATE applicants
-       SET sponsor_airline = $1,
-           applicant_confirmed_at = NOW(),
-           imc_status = 'medical_reservation_pending'
-       WHERE passport_number = $2
-       RETURNING imc_status, sponsor_airline, applicant_confirmed_at`,
-      [sponsorAirline, passport_number]
+      `
+      UPDATE applicants
+      SET
+        sponsor_airline = $1,
+        applicant_confirmed_at = NOW(),
+        imc_status = 'medical_reservation_pending'
+      WHERE passport_number = $2
+      RETURNING
+        imc_status,
+        sponsor_airline,
+        applicant_confirmed_at
+      `,
+      [
+        sponsorAirline,
+        passport_number
+      ]
     );
 
     res.json({
       success: true,
-      message: "Details confirmed. The IMC office will prepare your payment invoice.",
-      data: result.rows[0],
+      message: "Sponsor airline confirmed successfully",
+      data: result.rows[0]
     });
 
-  } catch (error) {
-    console.error("Confirm error:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+  } catch(error) {
+
+    console.error(error);
+
+    res.status(500).json({
+      success: false,
+      message: "Unable to confirm sponsor airline"
+    });
+
   }
 });
 
