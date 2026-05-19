@@ -442,7 +442,7 @@ router.post('/admin/send-loi-response', verifyAdmin, async (req, res) => {
 });
 
 // SEARCH APPLICANT
-router.get('/search', async (req,res)=>{
+router.get('/admin/search', async (req,res)=>{
   try{
 
     const adminSecret=req.headers['x-admin-secret'];
@@ -493,7 +493,7 @@ router.get('/search', async (req,res)=>{
 
 
 // GET ALL APPLICANTS
-router.get('/applicants', async(req,res)=>{
+router.get('/admin/applicants', async(req,res)=>{
 
   try{
 
