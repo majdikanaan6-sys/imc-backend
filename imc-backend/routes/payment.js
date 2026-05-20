@@ -162,60 +162,134 @@ const upload = multer({
 });
 
 // ── UPLOAD PAYMENT PROOF ───────────────────────────────────
-router.post('/imc/upload-payment-proof', authenticateToken, upload.single('file'), async (req, res) => {
-  console.log('UPLOAD - TOKEN USER:', req.user);
-  console.log('UPLOAD - APPLICANT ID:', req.user.applicantId);
-  try {
-    if (!req.file) {
-      return res.status(400).json({ success: false, message: 'No file uploaded' });
-    }
+router.post(
+'/imc/upload-payment-proof',
+authenticateToken,
+upload.single('file'),
+async (req, res) => {
 
-    const applicantId = req.user.applicantId;
+try {
 
-    // Get applicant for reference
-    const appl = await pool.query(
-      `SELECT entry_permit_ref, passport_number FROM applicants WHERE id = $1`,
-      [applicantId]
-    );
-    if (appl.rows.length === 0) {
-      return res.status(404).json({ success: false, message: 'Applicant not found' });
-    }
+console.log('UPLOAD TOKEN:', req.user);
 
-    const { entry_permit_ref, passport_number } = appl.rows[0];
+if (!req.file) {
+  return res.status(400).json({
+    success:false,
+    message:'No file uploaded'
+  });
+}
 
-    // Upload to Cloudinary
-    const uploadResult = await new Promise((resolve, reject) => {
-      const stream = cloudinary.uploader.upload_stream(
-        {
-          folder:    'imc-payment-proofs',
-          public_id: `${entry_permit_ref}_${Date.now()}`,
-          resource_type: 'auto', // handles both images and PDFs
-          tags:      [entry_permit_ref, passport_number],
-        },
-        (error, result) => error ? reject(error) : resolve(result)
-      );
-      stream.end(req.file.buffer);
-    });
+const permitId = req.user.applicantId;
 
-    // Save Cloudinary URL to DB
-    await pool.query(
-      `UPDATE applicants
-       SET payment_proof_url = $1,
-           payment_proof_uploaded_at = NOW()
-       WHERE id = $2`,
-      [uploadResult.secure_url, applicantId]
-    );
 
-    res.json({
-      success: true,
-      message: 'Payment proof uploaded successfully',
-      url:     uploadResult.secure_url,
-    });
+// Get passport from entry permit
+const permit = await pool.query(
+`
+SELECT
+passport_number,
+entry_permit_ref
+FROM entry_permits
+WHERE id=$1
+`,
+[permitId]
+);
 
-  } catch (error) {
-    console.error('Upload error:', error);
-    res.status(500).json({ success: false, message: 'Upload failed. Please try again.' });
-  }
+if (permit.rows.length === 0) {
+  return res.status(404).json({
+    success:false,
+    message:'Entry permit not found'
+  });
+}
+
+const {
+passport_number,
+entry_permit_ref
+} = permit.rows[0];
+
+
+// Get actual applicant
+const appl = await pool.query(
+`
+SELECT id
+FROM applicants
+WHERE passport_number=$1
+`,
+[passport_number]
+);
+
+if (appl.rows.length===0){
+return res.status(404).json({
+success:false,
+message:'Applicant not found'
+});
+}
+
+const applicantId=appl.rows[0].id;
+
+
+// Upload file to Cloudinary
+const uploadResult =
+await new Promise((resolve,reject)=>{
+
+const stream =
+cloudinary.uploader.upload_stream(
+{
+folder:'imc-payment-proofs',
+public_id:`${entry_permit_ref}_${Date.now()}`,
+resource_type:'auto',
+tags:[
+entry_permit_ref,
+passport_number
+]
+},
+(error,result)=>{
+if(error) reject(error);
+else resolve(result);
+}
+);
+
+stream.end(req.file.buffer);
+
+});
+
+
+// Save proof URL
+await pool.query(
+`
+UPDATE applicants
+SET
+payment_proof_url=$1,
+payment_proof_uploaded_at=NOW()
+WHERE id=$2
+`,
+[
+uploadResult.secure_url,
+applicantId
+]
+);
+
+res.json({
+success:true,
+message:'Payment proof uploaded successfully',
+url:uploadResult.secure_url
+});
+
+}
+catch(error){
+
+console.error(
+error.response?.data ||
+error.message ||
+error
+);
+
+res.status(500).json({
+success:false,
+message:'Upload failed'
+});
+
+}
+
 });
 
 module.exports = router;
