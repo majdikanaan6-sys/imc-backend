@@ -163,6 +163,8 @@ const upload = multer({
 
 // ── UPLOAD PAYMENT PROOF ───────────────────────────────────
 router.post('/imc/upload-payment-proof', authenticateToken, upload.single('file'), async (req, res) => {
+  console.log('UPLOAD - TOKEN USER:', req.user);
+  console.log('UPLOAD - APPLICANT ID:', req.user.applicantId);
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, message: 'No file uploaded' });
