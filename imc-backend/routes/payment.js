@@ -1,5 +1,7 @@
 const express = require('express');
 const pool = require('../db');
+const multer    = require('multer');
+const cloudinary = require('cloudinary').v2;
 const authenticateToken = require('../middleware/authenticateToken');
 
 const router = express.Router();
@@ -139,6 +141,78 @@ router.post('/imc/invoice-request', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Invoice request error:', error);
     res.status(500).json({ success: false, message: 'Could not create invoice request' });
+  }
+});
+
+// Configure Cloudinary — add these to Railway env vars
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key:    process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+// Multer — memory storage (no disk write)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits:  { fileSize: 10 * 1024 * 1024 }, // 10MB
+  fileFilter: (req, file, cb) => {
+    const allowed = ['application/pdf', 'image/png', 'image/jpeg'];
+    allowed.includes(file.mimetype) ? cb(null, true) : cb(new Error('Invalid file type'));
+  }
+});
+
+// ── UPLOAD PAYMENT PROOF ───────────────────────────────────
+router.post('/imc/upload-payment-proof', authenticateToken, upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No file uploaded' });
+    }
+
+    const applicantId = req.user.applicantId;
+
+    // Get applicant for reference
+    const appl = await pool.query(
+      `SELECT entry_permit_ref, passport_number FROM applicants WHERE id = $1`,
+      [applicantId]
+    );
+    if (appl.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Applicant not found' });
+    }
+
+    const { entry_permit_ref, passport_number } = appl.rows[0];
+
+    // Upload to Cloudinary
+    const uploadResult = await new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        {
+          folder:    'imc-payment-proofs',
+          public_id: `${entry_permit_ref}_${Date.now()}`,
+          resource_type: 'auto', // handles both images and PDFs
+          tags:      [entry_permit_ref, passport_number],
+        },
+        (error, result) => error ? reject(error) : resolve(result)
+      );
+      stream.end(req.file.buffer);
+    });
+
+    // Save Cloudinary URL to DB
+    await pool.query(
+      `UPDATE applicants
+       SET payment_proof_url = $1,
+           payment_proof_uploaded_at = NOW()
+       WHERE id = $2`,
+      [uploadResult.secure_url, applicantId]
+    );
+
+    res.json({
+      success: true,
+      message: 'Payment proof uploaded successfully',
+      url:     uploadResult.secure_url,
+    });
+
+  } catch (error) {
+    console.error('Upload error:', error);
+    res.status(500).json({ success: false, message: 'Upload failed. Please try again.' });
   }
 });
 
