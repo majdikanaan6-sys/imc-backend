@@ -129,6 +129,70 @@ router.post("/send-resend-email", async (req, res) => {
   }
 });
 
+// ── PREVIEW EMAIL ──────────────────────────────────────────
+router.post('/admin/preview-email', async (req, res) => {
+  try {
+    const adminSecret = req.headers['x-admin-secret'];
+    if (adminSecret !== process.env.ADMIN_SECRET) {
+      return res.status(401).json({ success: false, message: 'Unauthorised' });
+    }
+
+    const { passportNumber, type = 'loi', doctorName, portalUrl } = req.body;
+
+    const result = await pool.query(
+      `SELECT * FROM applicants WHERE passport_number = $1 ORDER BY created_at DESC LIMIT 1`,
+      [passportNumber.trim().toUpperCase()]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Applicant not found' });
+    }
+
+    const a      = result.rows[0];
+    const year   = new Date().getFullYear();
+    const refNum = Math.floor(1000 + Math.random() * 9000).toString();
+    const date   = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    let html, subject;
+
+    if (type === 'istanbul') {
+      html = getIstanbulTemplate()
+        .replace(/{{FULL_NAME}}/g,        a.full_name        || '—')
+        .replace(/{{YEAR}}/g,             String(year))
+        .replace(/{{REF_NUMBER}}/g,       refNum)
+        .replace(/{{DATE}}/g,             date)
+        .replace(/{{PASSPORT_NUMBER}}/g,  a.passport_number  || '—')
+        .replace(/{{ENTRY_PERMIT_REF}}/g, a.entry_permit_ref || '—');
+      subject = `IMC Medical Examination — Alternative Arrangement via Istanbul | Ref: NPRA/IMC/MED/${year}/${refNum}`;
+
+    } else if (type === 'invoice_ready') {
+      html = getInvoiceReadyTemplate()
+        .replace(/{{FULL_NAME}}/g,          a.full_name        || '—')
+        .replace(/{{ENTRY_PERMIT_REF}}/g,   a.entry_permit_ref || '—')
+        .replace(/{{PASSPORT_NUMBER}}/g,    a.passport_number  || '—')
+        .replace(/{{DOCTOR_NAME}}/g,        doctorName         || a.doctor_name || 'To be confirmed')
+        .replace(/{{PORTAL_URL}}/g,         portalUrl          || '')
+        .replace(/{{PORTAL_PAYMENT_URL}}/g, `${portalUrl}/imc-payment.html`);
+      subject = `Invoice Ready — Action Required | ${a.entry_permit_ref}`;
+
+    } else {
+      html = getLoiTemplate()
+        .replace(/{{FULL_NAME}}/g,        a.full_name        || '—')
+        .replace(/{{YEAR}}/g,             String(year))
+        .replace(/{{REF_NUMBER}}/g,       refNum)
+        .replace(/{{DATE}}/g,             date)
+        .replace(/{{PASSPORT_NUMBER}}/g,  a.passport_number  || '—');
+      subject = `IMC Application – Required Documents | Ref: NPRA/IMC/LOI/${year}/${refNum}`;
+    }
+
+    res.json({ success: true, html, subject, email: a.email });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Preview failed' });
+  }
+});
+
 // ── SEND LOI RESPONSE EMAIL ────────────────────────────────
 router.post('/admin/send-loi-response', async (req, res) => {
   try {
