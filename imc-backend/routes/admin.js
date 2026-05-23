@@ -530,4 +530,35 @@ router.get('/admin/applicants', async(req,res)=>{
 
 });
 
+router.post('/admin/set-payment-method', async (req, res) => {
+  try {
+    const { entry_permit_ref, payment_method } = req.body;
+
+    if (!['bank_transfer', 'wu_mg'].includes(payment_method)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'payment_method must be bank_transfer or wu_mg' 
+      });
+    }
+
+    const result = await pool.query(
+      `UPDATE applicants 
+       SET payment_method = $1 
+       WHERE entry_permit_ref = $2 
+       RETURNING entry_permit_ref, payment_method, imc_status`,
+      [payment_method, entry_permit_ref]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Applicant not found' });
+    }
+
+    res.json({ success: true, applicant: result.rows[0] });
+
+  } catch (error) {
+    console.error('Set payment method error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;
