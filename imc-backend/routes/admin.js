@@ -534,10 +534,10 @@ router.post('/admin/set-payment-method', async (req, res) => {
   try {
     const { entry_permit_ref, payment_method } = req.body;
 
-    if (!['bank_transfer', 'wu_mg'].includes(payment_method)) {
+    if (!['bank_transfer', 'wu_mg', 'wu_mg_dubai'].includes(payment_method)) {
       return res.status(400).json({ 
         success: false, 
-        message: 'payment_method must be bank_transfer or wu_mg' 
+        message: 'payment_method must be bank_transfer, wu_mg or wu_mg_dubai' 
       });
     }
 
