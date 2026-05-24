@@ -253,35 +253,21 @@ stream.end(req.file.buffer);
 });
 
 
-// Save proof URL
+// Save proof URL + flip flag — single query, before res.json()
 await pool.query(
-`
-UPDATE applicants
-SET
-payment_proof_url=$1,
-payment_proof_uploaded_at=NOW()
-WHERE id=$2
-`,
-[
-uploadResult.secure_url,
-applicantId
-]
+  `UPDATE applicants
+   SET payment_proof_url       = $1,
+       payment_proof_submitted = true,
+       payment_proof_uploaded_at = NOW()
+   WHERE id = $2`,
+  [uploadResult.secure_url, applicantId]
 );
 
 res.json({
-success:true,
-message:'Payment proof uploaded successfully',
-url:uploadResult.secure_url
+  success: true,
+  message: 'Payment proof uploaded successfully',
+  url: uploadResult.secure_url
 });
-
-await pool.query(
-  `UPDATE applicants 
-   SET payment_proof_submitted = true,
-       payment_proof_url = $1
-   WHERE passport_number = $2`,
-  [fileUrl, permit.passport_number]
-);
-
 }
 catch(error){
 
