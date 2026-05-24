@@ -274,6 +274,14 @@ message:'Payment proof uploaded successfully',
 url:uploadResult.secure_url
 });
 
+await pool.query(
+  `UPDATE applicants 
+   SET payment_proof_submitted = true,
+       payment_proof_url = $1
+   WHERE passport_number = $2`,
+  [fileUrl, permit.passport_number]
+);
+
 }
 catch(error){
 
