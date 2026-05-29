@@ -578,6 +578,34 @@ router.post('/admin/assign-doctor', async (req, res) => {
   }
 });
 
+router.post('/admin/assign-imc-code', async (req, res) => {
+  try {
+    const { entry_permit_ref, imc_code } = req.body;
+
+    if (!imc_code) {
+      return res.status(400).json({ success: false, message: 'imc_code is required.' });
+    }
+
+    const result = await pool.query(
+      `UPDATE applicants
+       SET imc_code = $1
+       WHERE entry_permit_ref = $2
+       RETURNING entry_permit_ref, imc_code, imc_status`,
+      [imc_code, entry_permit_ref]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Applicant not found.' });
+    }
+
+    res.json({ success: true, applicant: result.rows[0] });
+
+  } catch (error) {
+    console.error('Assign IMC code error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // ── ADMIN: UPDATE MEDICAL DETAILSS ─────────────────────────────────────────────
 router.post("/admin/update-medical", async (req, res) => {
   try {
