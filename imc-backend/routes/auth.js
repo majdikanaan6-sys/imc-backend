@@ -474,9 +474,19 @@ router.post("/admin/update-status", async (req, res) => {
   try {
     const { entry_permit_ref, imc_status } = req.body;
 
+    // Timestamp fields that should be set automatically on status change
+    const timestampMap = {
+      payment_confirmed:      'payment_confirmed_at',
+      medical_scheduled:      'imc_code_issued_at',
+      personal_number_issued: 'personal_number_issued_at',
+    };
+
+    const tsField = timestampMap[imc_status];
+
     const result = await pool.query(
       `UPDATE applicants
        SET imc_status = $1
+       ${tsField ? `, ${tsField} = NOW()` : ''}
        WHERE entry_permit_ref = $2
        RETURNING *`,
       [imc_status, entry_permit_ref]
