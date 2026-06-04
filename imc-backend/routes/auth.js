@@ -652,6 +652,25 @@ router.post("/admin/update-medical", async (req, res) => {
   }
 });
 
+router.post('/admin/set-otb', async (req, res) => {
+  try {
+    const adminSecret = req.headers['x-admin-secret'];
+    if (adminSecret !== process.env.ADMIN_SECRET) {
+      return res.status(401).json({ success: false, message: 'Unauthorised' });
+    }
+    const { entry_permit_ref, requires_otb } = req.body;
+    const result = await pool.query(
+      `UPDATE applicants SET requires_otb = $1 WHERE entry_permit_ref = $2 RETURNING *`,
+      [requires_otb, entry_permit_ref]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ success: false, message: 'Applicant not found' });
+    res.json({ success: true, applicant: result.rows[0] });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Update failed' });
+  }
+});
+
 // ── ADMIN: ISSUE PERSONAL NUMBER ──────────────────────────────────────────────
 router.post("/admin/issue-personal-number", async (req, res) => {
   try {
