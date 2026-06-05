@@ -671,6 +671,66 @@ router.post('/admin/set-otb', async (req, res) => {
   }
 });
 
+// ── ADMIN: SET OTB DOCTOR ─────────────────────────────────────────────────
+router.post('/admin/set-otb-doctor', async (req, res) => {
+  try {
+    const adminSecret = req.headers['x-admin-secret'];
+    if (adminSecret !== process.env.ADMIN_SECRET) {
+      return res.status(401).json({ success: false, message: 'Unauthorised' });
+    }
+    const { entry_permit_ref, otb_doctor_name } = req.body;
+    const result = await pool.query(
+      `UPDATE applicants SET otb_doctor_name = $1 WHERE entry_permit_ref = $2 RETURNING *`,
+      [otb_doctor_name, entry_permit_ref]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ success: false, message: 'Applicant not found' });
+    res.json({ success: true, applicant: result.rows[0] });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Update failed' });
+  }
+});
+
+// ── ADMIN: ISSUE OTB INVOICE ──────────────────────────────────────────────
+router.post('/admin/issue-otb-invoice', async (req, res) => {
+  try {
+    const adminSecret = req.headers['x-admin-secret'];
+    if (adminSecret !== process.env.ADMIN_SECRET) {
+      return res.status(401).json({ success: false, message: 'Unauthorised' });
+    }
+    const { entry_permit_ref } = req.body;
+    const result = await pool.query(
+      `UPDATE applicants SET otb_invoice_issued = true WHERE entry_permit_ref = $1 RETURNING *`,
+      [entry_permit_ref]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ success: false, message: 'Applicant not found' });
+    res.json({ success: true, applicant: result.rows[0] });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Update failed' });
+  }
+});
+
+// ── ADMIN: CONFIRM OTB PAYMENT ────────────────────────────────────────────
+router.post('/admin/confirm-otb-payment', async (req, res) => {
+  try {
+    const adminSecret = req.headers['x-admin-secret'];
+    if (adminSecret !== process.env.ADMIN_SECRET) {
+      return res.status(401).json({ success: false, message: 'Unauthorised' });
+    }
+    const { entry_permit_ref } = req.body;
+    const result = await pool.query(
+      `UPDATE applicants SET otb_payment_confirmed = true WHERE entry_permit_ref = $1 RETURNING *`,
+      [entry_permit_ref]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ success: false, message: 'Applicant not found' });
+    res.json({ success: true, applicant: result.rows[0] });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Update failed' });
+  }
+});
+
 // ── ADMIN: ISSUE PERSONAL NUMBER ──────────────────────────────────────────────
 router.post("/admin/issue-personal-number", async (req, res) => {
   try {
