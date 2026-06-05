@@ -250,6 +250,18 @@ stream.end(req.file.buffer);
 
 });
 
+
+
+// Save proof URL + flip flag — single query, before res.json()
+await pool.query(
+  `UPDATE applicants
+   SET payment_proof_url       = $1,
+       payment_proof_submitted = true,
+       payment_proof_uploaded_at = NOW()
+   WHERE id = $2`,
+  [uploadResult.secure_url, applicantId]
+);
+
 router.post('/imc/upload-otb-proof', authenticateToken, upload.single('file'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded.' });
@@ -291,16 +303,6 @@ router.post('/imc/upload-otb-proof', authenticateToken, upload.single('file'), a
   }
 });
 
-
-// Save proof URL + flip flag — single query, before res.json()
-await pool.query(
-  `UPDATE applicants
-   SET payment_proof_url       = $1,
-       payment_proof_submitted = true,
-       payment_proof_uploaded_at = NOW()
-   WHERE id = $2`,
-  [uploadResult.secure_url, applicantId]
-);
 
 res.json({
   success: true,
