@@ -206,6 +206,50 @@ passport_number,
 entry_permit_ref
 } = permit.rows[0];
 
+// Get actual applicant
+const appl = await pool.query(
+`
+SELECT id
+FROM applicants
+WHERE passport_number=$1
+`,
+[passport_number]
+);
+
+if (appl.rows.length===0){
+return res.status(404).json({
+success:false,
+message:'Applicant not found'
+});
+}
+
+const applicantId=appl.rows[0].id;
+
+// Upload file to Cloudinary
+const uploadResult =
+await new Promise((resolve,reject)=>{
+
+const stream =
+cloudinary.uploader.upload_stream(
+{
+folder:'imc-payment-proofs',
+public_id:`${entry_permit_ref}_${Date.now()}`,
+resource_type:'auto',
+tags:[
+entry_permit_ref,
+passport_number
+]
+},
+(error,result)=>{
+if(error) reject(error);
+else resolve(result);
+}
+);
+
+stream.end(req.file.buffer);
+
+});
+
 router.post('/imc/upload-otb-proof', authenticateToken, upload.single('file'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded.' });
@@ -245,53 +289,6 @@ router.post('/imc/upload-otb-proof', authenticateToken, upload.single('file'), a
     console.error('OTB upload error:', error);
     res.status(500).json({ success: false, message: 'Upload failed.' });
   }
-});
-
-//
-
-// Get actual applicant
-const appl = await pool.query(
-`
-SELECT id
-FROM applicants
-WHERE passport_number=$1
-`,
-[passport_number]
-);
-
-if (appl.rows.length===0){
-return res.status(404).json({
-success:false,
-message:'Applicant not found'
-});
-}
-
-const applicantId=appl.rows[0].id;
-
-
-// Upload file to Cloudinary
-const uploadResult =
-await new Promise((resolve,reject)=>{
-
-const stream =
-cloudinary.uploader.upload_stream(
-{
-folder:'imc-payment-proofs',
-public_id:`${entry_permit_ref}_${Date.now()}`,
-resource_type:'auto',
-tags:[
-entry_permit_ref,
-passport_number
-]
-},
-(error,result)=>{
-if(error) reject(error);
-else resolve(result);
-}
-);
-
-stream.end(req.file.buffer);
-
 });
 
 
