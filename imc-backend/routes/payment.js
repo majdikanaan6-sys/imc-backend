@@ -161,6 +161,47 @@ const upload = multer({
   }
 });
 
+router.post('/imc/upload-otb-proof', authenticateToken, upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded.' });
+
+    const { permit, applicant } = await getApplicant(req.user.applicantId);
+    if (!permit)    return res.status(404).json({ success: false, message: 'Permit not found' });
+    if (!applicant) return res.status(404).json({ success: false, message: 'Applicant not found' });
+
+    if (!applicant.requires_otb || !applicant.otb_invoice_issued) {
+      return res.status(400).json({ success: false, message: 'OTB upload not available.' });
+    }
+
+    const uploadResult = await new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        {
+          folder: 'imc-otb-proofs',
+          public_id: `otb_${applicant.entry_permit_ref}_${Date.now()}`,
+          resource_type: 'auto',
+        },
+        (error, result) => { if (error) reject(error); else resolve(result); }
+      );
+      stream.end(req.file.buffer);
+    });
+
+    await pool.query(
+      `UPDATE applicants
+       SET otb_payment_proof_url       = $1,
+           otb_payment_proof_submitted = true,
+           otb_payment_proof_uploaded_at = NOW()
+       WHERE passport_number = $2`,
+      [uploadResult.secure_url, permit.passport_number]
+    );
+
+    res.json({ success: true, message: 'OTB payment receipt submitted.', url: uploadResult.secure_url });
+
+  } catch (error) {
+    console.error('OTB upload error:', error);
+    res.status(500).json({ success: false, message: 'Upload failed.' });
+  }
+});
+
 // ── UPLOAD PAYMENT PROOF ───────────────────────────────────
 router.post(
 '/imc/upload-payment-proof',
@@ -262,46 +303,7 @@ await pool.query(
   [uploadResult.secure_url, applicantId]
 );
 
-router.post('/imc/upload-otb-proof', authenticateToken, upload.single('file'), async (req, res) => {
-  try {
-    if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded.' });
 
-    const { permit, applicant } = await getApplicant(req.user.applicantId);
-    if (!permit)    return res.status(404).json({ success: false, message: 'Permit not found' });
-    if (!applicant) return res.status(404).json({ success: false, message: 'Applicant not found' });
-
-    if (!applicant.requires_otb || !applicant.otb_invoice_issued) {
-      return res.status(400).json({ success: false, message: 'OTB upload not available.' });
-    }
-
-    const uploadResult = await new Promise((resolve, reject) => {
-      const stream = cloudinary.uploader.upload_stream(
-        {
-          folder: 'imc-otb-proofs',
-          public_id: `otb_${applicant.entry_permit_ref}_${Date.now()}`,
-          resource_type: 'auto',
-        },
-        (error, result) => { if (error) reject(error); else resolve(result); }
-      );
-      stream.end(req.file.buffer);
-    });
-
-    await pool.query(
-      `UPDATE applicants
-       SET otb_payment_proof_url       = $1,
-           otb_payment_proof_submitted = true,
-           otb_payment_proof_uploaded_at = NOW()
-       WHERE passport_number = $2`,
-      [uploadResult.secure_url, permit.passport_number]
-    );
-
-    res.json({ success: true, message: 'OTB payment receipt submitted.', url: uploadResult.secure_url });
-
-  } catch (error) {
-    console.error('OTB upload error:', error);
-    res.status(500).json({ success: false, message: 'Upload failed.' });
-  }
-});
 
 
 res.json({
