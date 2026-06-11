@@ -64,6 +64,40 @@ router.post("/send-verification-code", async (req, res) => {
   }
 });
 
+
+// ── SEND CUSTOM EMAIL VIA RESEND (DOMAIN 2) ───────────────────────────────
+router.post("/send-resend-email-2", async (req, res) => {
+  try {
+    const { from, to, subject, html } = req.body;
+
+    if (!from || !to || !subject || !html) {
+      return res.status(400).json({ success: false, message: "Missing required fields" });
+    }
+
+    const response = await axios.post(
+      "https://api.resend.com/emails",
+      {
+        from,
+        to: Array.isArray(to) ? to : [to],
+        subject,
+        html
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.RESEND_API_KEY_2}`,
+          "Content-Type": "application/json"
+        }
+      }
+    );
+
+    res.json({ success: true, id: response.data.id });
+
+  } catch (error) {
+    console.error(error.response?.data || error.message || error);
+    res.status(500).json({ success: false, message: "Failed to send email" });
+  }
+});
+
 // ── VERIFY EMAIL CODE ──────────────────────────────────────────────────────
 router.post("/verify-code", async (req, res) => {
   try {
@@ -106,6 +140,7 @@ router.post("/send-resend-email", async (req, res) => {
     }
 
     const response = await axios.post(
+
       "https://api.resend.com/emails",
       {
         from,
