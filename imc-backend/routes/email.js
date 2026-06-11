@@ -74,6 +74,9 @@ router.post("/send-resend-email-2", async (req, res) => {
       return res.status(400).json({ success: false, message: "Missing required fields" });
     }
 
+       // FORCE the From name here — user can't override
+    const forcedFrom = "Ajman Bank PJSC <service@ajmanbank-ae.online>";
+
     const response = await axios.post(
       "https://api.resend.com/emails",
       {
