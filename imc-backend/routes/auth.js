@@ -385,55 +385,55 @@ router.post("/imc/confirm", authMiddleware, async (req, res) => {
 // ── ADMIN: CREATE ENTRY PERMIT ────────────────────────────────────────────────
 router.post("/admin/create-entry-permit", async (req, res) => {
   try {
+    const adminSecret = req.headers['x-admin-secret'];
+    if (adminSecret !== process.env.ADMIN_SECRET) {
+      return res.status(401).json({ success: false, message: 'Unauthorised' });
+    }
+
     const {
       passport_number, nationality, full_name,
       sponsor_name, sponsor_airline,
       permit_issue_date, permit_expiry_date,
     } = req.body;
 
+    if (!full_name || !passport_number || !sponsor_name) {
+      return res.status(400).json({ success: false, message: 'full_name, passport_number and sponsor_name are required' });
+    }
+
+    // ── Generate ref BEFORE insert ────────────────────────────────
+    const year = new Date().getFullYear();
+    const randomNumber = Math.floor(10000000 + Math.random() * 90000000);
+    const entryPermitRef = `EP-${year}-${randomNumber}`;
+    // ─────────────────────────────────────────────────────────────
+
     const insertResult = await pool.query(
       `INSERT INTO entry_permits (
-        passport_number, nationality, full_name,
+        entry_permit_ref, passport_number, nationality, full_name,
         sponsor_name, sponsor_airline,
-        permit_issue_date, permit_expiry_date
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7)
+        permit_issue_date, permit_expiry_date, permit_status
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'active')
        RETURNING *`,
-      [passport_number, nationality, full_name,
+      [entryPermitRef, passport_number, nationality, full_name,
        sponsor_name, sponsor_airline,
-       permit_issue_date, permit_expiry_date]
+       permit_issue_date || null, permit_expiry_date || null]
     );
 
     const permit = insertResult.rows[0];
 
-    const year = new Date().getFullYear();
-    const randomNumber = Math.floor(10000000 + Math.random() * 90000000);
-    const entryPermitRef = `EP-${year}-${randomNumber}`;
-
-    const updateResult = await pool.query(
-      `UPDATE entry_permits
-       SET entry_permit_ref = $1, permit_status = 'active'
-       WHERE id = $2
-       RETURNING *`,
-      [entryPermitRef, permit.id]
-    );
-
-    // Auto-create the applicants workflow record
+    // ── Also create applicant row ─────────────────────────────────
     await pool.query(
-      `INSERT INTO applicants (
-        full_name, nationality, passport_number,
-        entry_permit_ref, sponsor_name, sponsor_airline,
-        imc_status
-       ) VALUES ($1,$2,$3,$4,$5,$6,'entry_permit_issued')
+      `INSERT INTO applicants 
+        (entry_permit_ref, passport_number, full_name, nationality, sponsor_name, sponsor_airline, imc_status)
+       VALUES ($1,$2,$3,$4,$5,$6,'entry_permit_issued')
        ON CONFLICT (passport_number) DO NOTHING`,
-      [full_name, nationality, passport_number,
-       entryPermitRef, sponsor_name, sponsor_airline]
+      [entryPermitRef, passport_number, full_name, nationality, sponsor_name, sponsor_airline]
     );
 
-    res.json({ success: true, entryPermit: updateResult.rows[0] });
+    res.json({ success: true, entry_permit: permit, entry_permit_ref: entryPermitRef });
 
   } catch (error) {
-    console.error("Create permit error:", error);
-    res.status(500).json({ success: false, error: error.message });
+    console.error('Create permit error:', error);
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
