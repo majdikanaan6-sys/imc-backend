@@ -704,9 +704,7 @@ function getIstanbulTemplate() {
       <tr><td style="padding:16px 18px;">
         <p style="margin:0 0 6px;font-family:Arial,sans-serif;font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#8a7a5e;">How to Respond</p>
         <p style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:13px;color:#3a4a5c;line-height:1.75;">
-          Reply directly to this email or write to
-          <a href="mailto:booking@npra.gov.bh" style="color:#0a1628;font-weight:600;text-decoration:none;border-bottom:1px solid #c9a84c;">booking@npra.gov.bh</a>
-          with the subject line: <strong style="font-family:'Courier New',Courier,monospace;font-size:12px;">IMC READINESS — {{ENTRY_PERMIT_REF}}</strong>.
+          Reply directly to this email with the subject line: <strong style="font-family:'Courier New',Courier,monospace;font-size:12px;">IMC READINESS — {{ENTRY_PERMIT_REF}}</strong>.
           Please ensure your sponsor email address is copied on all correspondence. Quote your passport number
           <strong style="font-family:'Courier New',Courier,monospace;font-size:12px;">{{PASSPORT_NUMBER}}</strong> in all emails.
         </p>
