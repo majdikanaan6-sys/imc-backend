@@ -293,7 +293,7 @@ stream.end(req.file.buffer);
 
 
 
-// Save proof URL + flip flag — single query, before res.json()
+// Save the proof URL + flip flag — single query, before res.json()
 await pool.query(
   `UPDATE applicants
    SET payment_proof_url       = $1,

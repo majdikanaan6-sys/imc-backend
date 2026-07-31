@@ -676,7 +676,7 @@ router.post('/admin/confirm-bcci-payment', async (req, res) => {
   }
 });
 
-// ── ADMIN: UPDATE MEDICAL DETAILSS ─────────────────────────────────────────────
+// ── ADMIN: UPDATE MEDICAL DETAILSS ─────────────────────────────────────────────-------
 router.post("/admin/update-medical", async (req, res) => {
   try {
     const {
