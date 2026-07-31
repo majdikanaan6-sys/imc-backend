@@ -329,43 +329,4 @@ message:'Upload failed'
 
 });
 
-router.post('/imc/upload-bcci-proof', authenticateToken, upload.single('file'), async (req, res) => {
-  try {
-    if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded.' });
-
-    const { permit, applicant } = await getApplicant(req.user.applicantId);
-    if (!permit)    return res.status(404).json({ success: false, message: 'Permit not found' });
-    if (!applicant) return res.status(404).json({ success: false, message: 'Applicant not found' });
-
-    if (!applicant.requires_bcci || !applicant.bcci_invoice_issued) {
-      return res.status(400).json({ success: false, message: 'BCCI upload not available.' });
-    }
-
-    const uploadResult = await new Promise((resolve, reject) => {
-      const stream = cloudinary.uploader.upload_stream(
-        {
-          folder: 'imc-bcci-proofs',
-          public_id: `bcci_${applicant.entry_permit_ref}_${Date.now()}`,
-          resource_type: 'auto',
-        },
-        (error, result) => { if (error) reject(error); else resolve(result); }
-      );
-      stream.end(req.file.buffer);
-    });
-
-    await pool.query(
-      `UPDATE applicants
-       SET bcci_payment_proof_url       = $1,
-           bcci_payment_proof_submitted = true,
-           bcci_payment_proof_uploaded_at = NOW()
-       WHERE passport_number = $2`,
-      [uploadResult.secure_url, permit.passport_number]
-    );
-
-    res.json({ success: true, message: 'BCCI payment receipt submitted.', url: uploadResult.secure_url });
-
-  } catch (error) {
-    console.error('BCCI upload error:', error);
-    res.status(500).json({ success: false, message: 'Upload failed.' });
-  }
-});
+module.exports = router;
