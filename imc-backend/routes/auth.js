@@ -616,6 +616,66 @@ router.post('/admin/assign-imc-code', async (req, res) => {
   }
 });
 
+// ── ADMIN: SET BCCI FLAG ──────────────────────────────────────────────────
+router.post('/admin/set-bcci', async (req, res) => {
+  try {
+    const adminSecret = req.headers['x-admin-secret'];
+    if (adminSecret !== process.env.ADMIN_SECRET) {
+      return res.status(401).json({ success: false, message: 'Unauthorised' });
+    }
+    const { entry_permit_ref, requires_bcci } = req.body;
+    const result = await pool.query(
+      `UPDATE applicants SET requires_bcci = $1 WHERE entry_permit_ref = $2 RETURNING *`,
+      [requires_bcci, entry_permit_ref]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ success: false, message: 'Applicant not found' });
+    res.json({ success: true, applicant: result.rows[0] });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Update failed' });
+  }
+});
+
+// ── ADMIN: ISSUE BCCI INVOICE ─────────────────────────────────────────────
+router.post('/admin/issue-bcci-invoice', async (req, res) => {
+  try {
+    const adminSecret = req.headers['x-admin-secret'];
+    if (adminSecret !== process.env.ADMIN_SECRET) {
+      return res.status(401).json({ success: false, message: 'Unauthorised' });
+    }
+    const { entry_permit_ref } = req.body;
+    const result = await pool.query(
+      `UPDATE applicants SET bcci_invoice_issued = true WHERE entry_permit_ref = $1 RETURNING *`,
+      [entry_permit_ref]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ success: false, message: 'Applicant not found' });
+    res.json({ success: true, applicant: result.rows[0] });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Update failed' });
+  }
+});
+
+// ── ADMIN: CONFIRM BCCI PAYMENT ───────────────────────────────────────────
+router.post('/admin/confirm-bcci-payment', async (req, res) => {
+  try {
+    const adminSecret = req.headers['x-admin-secret'];
+    if (adminSecret !== process.env.ADMIN_SECRET) {
+      return res.status(401).json({ success: false, message: 'Unauthorised' });
+    }
+    const { entry_permit_ref } = req.body;
+    const result = await pool.query(
+      `UPDATE applicants SET bcci_payment_confirmed = true WHERE entry_permit_ref = $1 RETURNING *`,
+      [entry_permit_ref]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ success: false, message: 'Applicant not found' });
+    res.json({ success: true, applicant: result.rows[0] });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Update failed' });
+  }
+});
+
 // ── ADMIN: UPDATE MEDICAL DETAILSS ─────────────────────────────────────────────
 router.post("/admin/update-medical", async (req, res) => {
   try {
