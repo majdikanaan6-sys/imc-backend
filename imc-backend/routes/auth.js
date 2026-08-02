@@ -676,6 +676,38 @@ router.post('/admin/confirm-bcci-payment', async (req, res) => {
   }
 });
 
+// ── ADMIN: ISSUE BCCI AUTH CODE ───────────────────────────────────────────
+router.post('/admin/issue-bcci-code', async (req, res) => {
+  try {
+    const adminSecret = req.headers['x-admin-secret'];
+    if (adminSecret !== process.env.ADMIN_SECRET) {
+      return res.status(401).json({ success: false, message: 'Unauthorised' });
+    }
+    const { entry_permit_ref, bcci_auth_code } = req.body;
+
+    if (!bcci_auth_code) {
+      return res.status(400).json({ success: false, message: 'bcci_auth_code is required' });
+    }
+
+    const result = await pool.query(
+      `UPDATE applicants 
+       SET bcci_auth_code = $1 
+       WHERE entry_permit_ref = $2 
+       RETURNING *`,
+      [bcci_auth_code, entry_permit_ref]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Applicant not found' });
+    }
+
+    res.json({ success: true, applicant: result.rows[0] });
+  } catch (error) {
+    console.error('Issue BCCI code error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // ── ADMIN: UPDATE MEDICAL DETAILSS ─────────────────────────────────────────────-------
 router.post("/admin/update-medical", async (req, res) => {
   try {
